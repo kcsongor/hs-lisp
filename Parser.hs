@@ -1,32 +1,51 @@
 {-# LANGUAGE DeriveFunctor #-}
-module Parser where
+module Parser(
+  Parser,
+  runParser,
+  (>>>),
+  (||>),
+  (+++),
+  failure,
+  item,
+  sat,
+  char,
+  digit,
+  upper,
+  lower,
+  letter,
+  word,
+  sepBy,
+  whitespace,
+) where
 
 import Control.Applicative
+import Control.Monad
 import Data.Monoid
 
-newtype Parser a = Parser (String -> [(a, String)]) deriving (Functor)
-
-runParser :: Parser a -> String -> [(a, String)]
-runParser (Parser p) = p
+newtype Parser a 
+  = Parser { runParser :: String -> [(a, String)]} deriving (Functor)
 
 -- Instances -------------------------------------------------------------------
 instance Applicative Parser where
   pure = return
-  f <*> p1 = Parser $
-    \s -> concat [runParser (fmap f' p1) s' | (f', s') <- runParser f s]
+  (<*>) = ap
 
+-- | gives 'many' and 'some' for free
 instance Alternative Parser where
-  empty = zero
+  empty = failure 
   p1 <|> p2 = Parser $ \s ->
     case runParser p1 s of
       []     -> runParser p2 s
       result -> result
-  -- | many and some we got for free
 
 instance Monad Parser where
   return x = Parser $ \s -> [(x, s)]
-  Parser p1 >>= f = Parser $
-    \s -> concat [runParser (f x) s' | (x, s') <- p1 s]
+  p1 >>= f = Parser $
+    \s -> concat [runParser (f x) s' | (x, s') <- runParser p1 s]
+
+instance MonadPlus Parser where
+  mzero = failure
+  mplus = (+++)
 
 -- Combinators -----------------------------------------------------------------
 (>>>) :: Parser a -> Parser b -> Parser (a, b)
@@ -35,6 +54,7 @@ p1 >>> p2 = do
   y <- p2
   return (x, y)
 
+-- Not sure if this is needed
 (||>) :: Monoid a => Parser a -> Parser a -> Parser a
 p1 ||> p2 = do
   x <- p1
@@ -44,8 +64,8 @@ p1 ||> p2 = do
 (+++) :: Parser a -> Parser a -> Parser a
 p1 +++ p2 = Parser $ \s -> runParser p1 s ++ runParser p2 s
 
-zero :: Parser a
-zero = Parser $ const []
+failure :: Parser a
+failure = Parser $ const []
 
 item :: Parser Char
 item = Parser $ \x -> case x of
@@ -55,7 +75,7 @@ item = Parser $ \x -> case x of
 sat :: (Char -> Bool) -> Parser Char
 sat p = do
   x <- item
-  if p x then return x else zero
+  if p x then return x else failure 
 
 char :: Char -> Parser Char
 char c = sat (== c)
@@ -75,13 +95,14 @@ letter = lower +++ upper
 word :: Parser String
 word = many letter
 
-scope :: Parser String
-scope = do
-  b1      <- char '('
-  content <- do 
-    letters  <- many (letter <|> char ' ')
-    bracks   <- many scope
-    letters2 <- many (letter <|> char ' ')
-    return $ letters ++ concat bracks ++ letters2
-  b2      <- char ')'
-  return $ [b1] ++ content ++ [b2]
+whitespace :: Parser Char
+whitespace = sat (\c -> c == ' ' || c == '\n' || c == '\t')
+
+sepBy :: Parser a -> Parser b -> Parser [b]
+sepBy pa pb = do
+  b  <- pb
+  b' <- many pb'
+  return $ b : b'
+  where pb' = do
+          _ <- pa
+          pb
