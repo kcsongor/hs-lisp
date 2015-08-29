@@ -1,5 +1,6 @@
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
 module Language(
+  Code,
   parseString,
 ) where
 

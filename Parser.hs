@@ -1,4 +1,6 @@
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 module Parser(
   Parser,
   runParser,
@@ -64,6 +66,9 @@ p1 ||> p2 = do
   x <- p1
   y <- p2
   return $ mappend x y
+
+--(+++) :: Parser a -> Parser a -> Parser a
+--p1 +++ p2 = Parser $ \s -> runParser p1 s ++ runParser p2 s
 
 (+++) :: Parser a -> Parser a -> Parser a
 p1 +++ p2 = Parser $ \s -> runParser p1 s ++ runParser p2 s

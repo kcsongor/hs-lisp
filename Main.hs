@@ -1,10 +1,16 @@
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
+{-# LANGUAGE RecordWildCards #-}
+
 import Evaluator
 import Control.Applicative
-import Control.Monad
+
+import Data.IORef
 
 main :: IO ()
 main = do 
-  state <- ProgramState <$> return 0
+  i@ProgramState{..} <- ProgramState <$> newIORef 0
   putStrLn "Welcome to my simple lisp REPL!"
-  void $ runEval repl state
+  runEval repl i 
+  c <- readIORef counter
+  print c
+
