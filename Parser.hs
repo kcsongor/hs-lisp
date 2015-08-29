@@ -16,10 +16,14 @@ module Parser(
   word,
   sepBy,
   whitespace,
+  string,
+  anyOf,
+  special,
 ) where
 
 import Control.Applicative
 import Control.Monad
+
 import Data.Monoid
 
 newtype Parser a 
@@ -80,17 +84,30 @@ sat p = do
 char :: Char -> Parser Char
 char c = sat (== c)
 
+string :: String -> Parser String
+string [] = return []
+string (c : cs) = do
+  x  <- char c
+  xs <- string cs
+  return $ x : xs
+
+anyOf :: String -> Parser Char
+anyOf xs = sat (`elem` xs)
+
 digit :: Parser Char
-digit = sat (\c -> '0' <= c && c <= '9')
+digit = anyOf ['0'..'9']
 
 upper :: Parser Char
-upper = sat (\c -> 'A' <= c && c <= 'Z')
+upper = anyOf ['A'..'Z']
 
 lower :: Parser Char
-lower = sat (\c -> 'a' <= c && c <= 'z')
+lower = anyOf ['a'..'z']
 
 letter :: Parser Char
 letter = lower +++ upper
+
+special :: Parser Char
+special = anyOf "~!@#$%^&*-=_+?[]{}"
 
 word :: Parser String
 word = many letter
