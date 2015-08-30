@@ -5,4 +5,7 @@ A simple Lisp written in Haskell
 - Simple parser
 
 ##### TODO:
-- everything else
+- parser errors (ExeptT transformer)
+- eval
+- type inference
+- macro system
