@@ -12,6 +12,7 @@ module Parser(
   sat,
   char,
   digit,
+  number,
   upper,
   lower,
   letter,
@@ -20,6 +21,7 @@ module Parser(
   whitespace,
   string,
   anyOf,
+  noneOf,
   special,
 ) where
 
@@ -67,9 +69,6 @@ p1 ||> p2 = do
   y <- p2
   return $ mappend x y
 
---(+++) :: Parser a -> Parser a -> Parser a
---p1 +++ p2 = Parser $ \s -> runParser p1 s ++ runParser p2 s
-
 (+++) :: Parser a -> Parser a -> Parser a
 p1 +++ p2 = Parser $ \s -> runParser p1 s ++ runParser p2 s
 
@@ -99,8 +98,18 @@ string (c : cs) = do
 anyOf :: String -> Parser Char
 anyOf xs = sat (`elem` xs)
 
+noneOf :: String -> Parser Char
+noneOf xs = sat (`notElem` xs)
+
 digit :: Parser Char
 digit = anyOf ['0'..'9']
+
+-- cheating? possibly
+number :: (Read a, Num a) => Parser a
+number = do n <- many digit
+            case n of 
+              [] -> failure
+              _  -> return $ read n
 
 upper :: Parser Char
 upper = anyOf ['A'..'Z']
@@ -112,7 +121,7 @@ letter :: Parser Char
 letter = lower +++ upper
 
 special :: Parser Char
-special = anyOf "~!@#$%^&*-=_+?[]{}"
+special = anyOf "~!@#$%^&*-=_+?[]{}<>,./?;"
 
 word :: Parser String
 word = many letter
