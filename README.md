@@ -3,9 +3,9 @@ A simple Lisp written in Haskell
 
 ##### What works:
 - Simple parser
+- type inference
 
 ##### TODO:
 - parser errors (ExeptT transformer)
-- eval
-- type inference
+- eval (using type inference)
 - macro system
