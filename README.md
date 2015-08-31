@@ -9,3 +9,4 @@ A simple Lisp written in Haskell
 - parser errors (ExeptT transformer)
 - eval (using type inference)
 - macro system
+- user-defined data types
