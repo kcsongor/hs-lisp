@@ -39,7 +39,7 @@ quote = do
   return $ Quot s
 
 expr :: Parser Expr
-expr = quote +++ ifExpr +++ letExpr +++ atom +++ list
+expr = atom +++ quote +++ ifExpr +++ letExpr +++ list
 
 list :: Parser Expr
 list = do
@@ -51,7 +51,15 @@ list = do
   return $ List s
 
 atom :: Parser Expr
-atom = Id <$> some (letter +++ digit +++ special)
+atom = numLit <|> name
+
+numLit :: Parser Expr
+numLit = do
+  n <- some digit
+  return . Number . read $ n
+
+name :: Parser Expr
+name = Id <$> some (letter +++ digit +++ special)
 
 ifExpr :: Parser Expr
 ifExpr = do

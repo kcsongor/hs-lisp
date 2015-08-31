@@ -19,6 +19,7 @@ import Control.Monad.Except
 
 data Type = TInt 
           | TBool
+          | TList Type
           | TFun Type Type 
           | TVar String 
           deriving (Eq, Show)
@@ -48,6 +49,8 @@ instance TypeTable Type where
         Nothing -> TVar v
   substitute s (TFun f1 f2)
     = TFun (substitute s f1) (substitute s f2)
+  substitute s (TList l)
+    = TList (substitute s l)
   substitute _ t
     = t
 
@@ -120,6 +123,8 @@ unify (TVar v) t
   = bind v t
 unify t (TVar v)
   = bind v t
+unify (TList t1) (TList t2)
+  = unify t1 t2
 unify TInt TBool
   = return noSub
 unify TBool TInt
@@ -142,7 +147,7 @@ inferSub e (Abs l r)
        let TEnv e' = remove e l
            env     = TEnv $ M.union e' (M.singleton l (Scheme [] var))
        (s, t) <- inferSub env r
-       return $ (s, TFun (substitute s var) t)
+       return (s, TFun (substitute s var) t)
 inferSub e (App l r)
   = do var      <- nextVar
        (sl, tl) <- inferSub e l
@@ -156,6 +161,20 @@ inferSub e (Let x expr1 expr2)
            env     = TEnv (M.insert x t' e')
        (s2, t2) <- inferSub (substitute s1 env) expr2
        return (combine s1 s2, t2)
+inferSub _ (List [])
+  = do var <- nextVar
+       return (noSub, TList var)
+inferSub e (List [e1])
+  = do (s1, t1) <- inferSub e e1
+       return (s1, TList t1)
+inferSub e (List (e1 : es))
+  = do (s1, t1)         <- inferSub e e1
+       (ss, (TList ts)) <- inferSub (substitute s1 e) (List es)
+       s                <- unify t1 ts
+       let t1' = substitute s t1
+       if (t1' /= ts) 
+         then throwError $ show t1' ++ " doesn't match list type: " ++ show ts
+         else return (ss, TList ts)
 
 inferType :: TEnv -> Expr -> TI Type
 inferType env expr
