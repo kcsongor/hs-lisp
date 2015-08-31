@@ -164,17 +164,15 @@ inferSub e (Let x expr1 expr2)
 inferSub _ (List [])
   = do var <- nextVar
        return (noSub, TList var)
-inferSub e (List [e1])
-  = do (s1, t1) <- inferSub e e1
-       return (s1, TList t1)
 inferSub e (List (e1 : es))
   = do (s1, t1)         <- inferSub e e1
        (ss, (TList ts)) <- inferSub (substitute s1 e) (List es)
        s                <- unify t1 ts
        let t1' = substitute s t1
-       if (t1' /= ts) 
-         then throwError $ show t1' ++ " doesn't match list type: " ++ show ts
-         else return (ss, TList ts)
+       let ts' = substitute s ts
+       if (t1' /= ts') 
+         then throwError $ show t1' ++ " doesn't match list type: " ++ show ts'
+         else return (ss, TList ts')
 
 inferType :: TEnv -> Expr -> TI Type
 inferType env expr
