@@ -10,6 +10,7 @@ import Control.Applicative
 
 data Expr = Number Int
           | Boolean Bool
+          | Chars String
           | Id String 
           | List [Expr]
           | Quot Expr
@@ -59,12 +60,19 @@ form = do
   return s
 
 atom :: Parser Expr
-atom = numLit <|> boolLit <|> name
+atom = numLit <|> boolLit <|> name <|> stringLit
 
 numLit :: Parser Expr
 numLit = do
   n <- some digit
   return . Number . read $ n
+
+stringLit :: Parser Expr
+stringLit = do
+  char '"'
+  s <- many $ noneOf "\""
+  char '"'
+  return $ Chars s
 
 boolLit :: Parser Expr
 boolLit = true <|> false

@@ -25,6 +25,7 @@ import Control.Monad.Except
 
 data Type = TInt 
           | TBool
+          | TChar
           | TS (S.Set Type)
           | TList Type
           | TFun Type Type 
@@ -159,12 +160,9 @@ unify t (TVar v)
   = bind v t
 unify (TList t1) (TList t2)
   = unify t1 t2
-unify TBool TBool
-  = return noSub
-unify TInt TInt
-  = return noSub
 unify t1 t2
-  = throwError $ "Cannot unify " ++ show t1 ++ " with " ++ show t2
+  | t1 == t2  = return noSub
+  | otherwise = throwError $ "Cannot unify " ++ show t1 ++ " with " ++ show t2
 
 inferSub :: TEnv -> Expr -> TI (Sub, Type)
 inferSub (TEnv e) (Id v)
@@ -176,6 +174,8 @@ inferSub _ (Number _)
   = return (noSub, TInt)
 inferSub _ (Boolean _)
   = return (noSub, TBool)
+inferSub _ (Chars _)
+  = return (noSub, TList TChar)
 inferSub e (Abs l r)
   = do var <- nextVar
        let TEnv e' = remove e l
