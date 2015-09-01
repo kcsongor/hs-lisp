@@ -13,7 +13,6 @@ data Expr = Number Int
           | Id String 
           | List [Expr]
           | Quot Expr
-          | Cond Expr Expr Expr
           | App Expr Expr
           | Abs String Expr
           | Let String Expr Expr
@@ -30,45 +29,61 @@ parseNum s = case runParser number s of
   n  -> Just $ Number $ fst . head $ n
 
 toplevel :: Parser Expr
-toplevel = list +++ quote
+toplevel = app +++ list +++ quote
 
 quote :: Parser Expr
 quote = do
-  char '\''
-  s <- list
+  string "'"
+  s <- toplevel
   return $ Quot s
 
 expr :: Parser Expr
-expr = atom +++ quote +++ ifExpr +++ letExpr +++ list
+expr = atom +++ quote +++ letExpr +++ app +++ list
+
+app :: Parser Expr
+app = do
+  char '('
+  s <- form
+  char ')'
+  return $ foldl1 App s
 
 list :: Parser Expr
 list = do
-  char '('
-  many whitespace
-  s <- sepBy (some whitespace) expr
-  many whitespace
+  string "(\\"
+  s <- form
   char ')'
   return $ List s
 
+form :: Parser [Expr]
+form = do
+  many whitespace
+  s <- sepBy (some whitespace) expr
+  many whitespace
+  return s
+
 atom :: Parser Expr
-atom = numLit <|> name
+atom = numLit <|> boolLit <|> name
 
 numLit :: Parser Expr
 numLit = do
   n <- some digit
   return . Number . read $ n
 
+boolLit :: Parser Expr
+boolLit = true <|> false
+
+false :: Parser Expr
+false = do
+  string "false"
+  return $ Boolean False
+
+true :: Parser Expr
+true = do
+  string "true"
+  return $ Boolean True
+
 name :: Parser Expr
 name = Id <$> some (letter +++ digit +++ special)
-
-ifExpr :: Parser Expr
-ifExpr = do
-  string "if"
-  some whitespace
-  lists <- sepBy (many whitespace) expr
-  case lists of
-    [c, t, f] -> return $ Cond c t f
-    _         -> failure
 
 letExpr :: Parser Expr
 letExpr = do

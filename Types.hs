@@ -4,8 +4,13 @@ module Types(
   Type(..),
   inferType,
   emptyEnv,
+  Scheme(..),
+  TEnv(..),
   runTI,
   runTypeInference,
+  typePerms,
+  tUnion,
+  tExtractUnion,
 ) where
 
 import Language
@@ -13,6 +18,7 @@ import Language
 import qualified Data.Map.Strict as M
 import qualified Data.Set        as S
 
+import Data.Maybe
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Except
@@ -29,7 +35,7 @@ data Scheme = Scheme [String] Type deriving (Show)
 newtype TEnv = TEnv (M.Map String Scheme)
 
 emptyEnv :: TEnv
-emptyEnv = TEnv (M.empty)
+emptyEnv = TEnv M.empty
 
 type Sub = M.Map String Type
 
@@ -49,9 +55,7 @@ instance TypeTable Type where
   freeVars _
     = S.empty
   substitute s (TVar v)
-    = case M.lookup v s of
-        Just t  -> t
-        Nothing -> TVar v
+    = fromMaybe (TVar v) (M.lookup v s)
   substitute s (TFun f1 f2)
     = TFun (substitute s f1) (substitute s f2)
   substitute s (TList l)
@@ -68,7 +72,7 @@ instance TypeTable Scheme where
     = Scheme vs (substitute (foldr M.delete s vs) t)
 
 instance TypeTable a => TypeTable [a] where
-  freeVars t = foldr S.union S.empty (map freeVars t)
+  freeVars = foldr (S.union . freeVars) S.empty
   substitute s = map (substitute s)
 
 instance TypeTable TEnv where
@@ -91,7 +95,7 @@ generalise e t = Scheme vars t
 --------------------------------------------------------------------------------
 -- TODO: set of types as type
 typePerms :: S.Set Type -> Int -> S.Set [Type]
-typePerms s n = S.fromList $ sequence $ replicate n sl
+typePerms s n = S.fromList $ replicateM n sl
   where sl = S.toList s
 
 tUnion :: Type -> Type -> Type
@@ -192,16 +196,17 @@ inferSub _ (List [])
   = do var <- nextVar
        return (noSub, TList var)
 inferSub e (List (e1 : es))
-  = do (s1, t1)         <- inferSub e e1
-       (ss, (TList ts)) <- inferSub (substitute s1 e) (List es)
-       s                <- unify t1 ts
+  = do (s1, t1)       <- inferSub e e1
+       (ss, TList ts) <- inferSub (substitute s1 e) (List es)
+       s              <- unify t1 ts
        return (ss, TList $ substitute s ts)
+inferSub e (Quot q) = inferSub e q
 
 inferType :: TEnv -> Expr -> TI Type
 inferType env expr
   = do (sub, t) <- inferSub env expr
        return $ substitute sub t
 
-runTypeInference :: TEnv -> Expr -> (Either String Type)
+runTypeInference :: TEnv -> Expr -> Either String Type
 runTypeInference env expr
   = let (t, _) = runTI $ inferType env expr in t 
