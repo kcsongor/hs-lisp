@@ -30,6 +30,7 @@ import Control.Monad
 
 import Data.Monoid
 
+-- TODO: parser should be a State monad
 newtype Parser a 
   = Parser { runParser :: String -> [(a, String)]} deriving (Functor)
 
@@ -104,7 +105,6 @@ noneOf xs = sat (`notElem` xs)
 digit :: Parser Char
 digit = anyOf ['0'..'9']
 
--- cheating? possibly
 number :: (Read a, Num a) => Parser a
 number = do n <- many digit
             case n of 

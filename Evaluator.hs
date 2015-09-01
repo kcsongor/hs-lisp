@@ -1,11 +1,11 @@
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module Evaluator(
-  Evaluator(..),
+  Evaluator,
   ProgramState(..),
   runEval,
+  EvalState(..),
   repl,
 ) where
 
@@ -14,7 +14,8 @@ import Types
 
 import Control.Monad
 import Control.Monad.Reader
-import Control.Applicative
+import Control.Monad.State
+
 import Data.IORef
 
 import qualified Data.Map.Strict as M
@@ -23,19 +24,14 @@ data ProgramState = ProgramState {
   counter :: IORef Int
 }
 
-runEval :: Evaluator a -> ProgramState -> IO a
-runEval = runReaderT . run
+data EvalState = EvalState {
+}
+
+runEval :: EvalState -> ProgramState -> Evaluator a -> IO (a, EvalState)
+runEval s r = (`runStateT` s) . (`runReaderT` r)
 
 -- IO needed for REPL
-newtype Evaluator a = Evaluator {
-  run :: ReaderT ProgramState IO a 
-} deriving ( 
-    Applicative,
-    Functor,
-    Monad,
-    MonadIO,
-    MonadReader ProgramState
-  )
+type Evaluator a = ReaderT ProgramState (StateT EvalState IO) a 
 
 --------------------------------------------------------------------------------
 coreEnv :: TEnv

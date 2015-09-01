@@ -19,7 +19,6 @@ import qualified Data.Map.Strict as M
 import qualified Data.Set        as S
 
 import Data.Maybe
-import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Except
 

@@ -8,8 +8,9 @@ import Data.IORef
 
 main :: IO ()
 main = do 
-  i @ ProgramState{..} <- ProgramState <$> newIORef 0
+  iProg @ ProgramState{..} <- ProgramState <$> newIORef 0
+  iEval @ EvalState{..}    <- return EvalState
   putStrLn "Welcome to my simple lisp REPL!"
-  runEval repl i 
+  runEval iEval iProg repl
   c <- readIORef counter
   print c
