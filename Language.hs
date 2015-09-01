@@ -35,7 +35,7 @@ quote = do
   return $ Quot s
 
 expr :: Parser Expr
-expr = atom +++ quote +++ letExpr +++ app +++ list
+expr = atom +++ quote +++ lambda +++ letExpr +++ app +++ list
 
 app :: Parser Expr
 app = do
@@ -82,12 +82,28 @@ true = do
 name :: Parser Expr
 name = Id <$> some (letter +++ digit +++ special)
 
+lambda :: Parser Expr
+lambda = do
+  string "(\\"
+  many whitespace
+  Id i <- name 
+  many whitespace
+  char '.'
+  many whitespace
+  e    <- expr
+  many whitespace
+  char ')'
+  return $ Abs i e
+
 letExpr :: Parser Expr
 letExpr = do
   string "(let"
-  whitespace
-  s <- form
+  some whitespace
+  Id i <- name
+  some whitespace
+  e    <- expr 
+  some whitespace
+  e'   <- expr
+  many whitespace
   char ')'
-  case s of
-    [Id i, e, inExpr] -> return $ Let i e inExpr
-    _                 -> failure
+  return $ Let i e e'
