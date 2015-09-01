@@ -11,6 +11,7 @@ module Types(
   typePerms,
   tUnion,
   tExtractUnion,
+  emptyScheme,
 ) where
 
 import Language
@@ -90,6 +91,9 @@ remove (TEnv e) s = TEnv (M.delete s e)
 generalise :: TEnv -> Type -> Scheme
 generalise e t = Scheme vars t
   where vars = S.toList (S.difference (freeVars t) (freeVars e))
+
+emptyScheme :: Type -> Scheme
+emptyScheme t = Scheme (S.toList (freeVars t)) t
 
 --------------------------------------------------------------------------------
 -- TODO: set of types as type

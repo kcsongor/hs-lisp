@@ -15,6 +15,7 @@ import Types
 import Control.Monad
 import Control.Monad.Reader
 import Control.Monad.State
+import Control.Arrow
 
 import Data.IORef
 
@@ -36,16 +37,15 @@ type Evaluator a = ReaderT ProgramState (StateT EvalState IO) a
 
 --------------------------------------------------------------------------------
 coreEnv :: TEnv
-coreEnv = TEnv $ M.fromList
-  [("+",    Scheme [] (TFun TInt (TFun TInt TInt))),
-   ("*",    Scheme [] (TFun TInt (TFun TInt TInt))),
-   ("-",    Scheme [] (TFun TInt (TFun TInt TInt))),
-   ("==",   Scheme ["a"] (TFun (TVar "a") (TFun (TVar "a") TBool))),
-   ("if",   Scheme ["a"] (TFun TBool (TFun (TVar "a") (TFun (TVar "a") (TVar "a"))))),
-   ("and",  Scheme [] (TFun TBool (TFun TBool TBool))),
-   ("or",   Scheme [] (TFun TBool (TFun TBool TBool))),
-   -- TODO: quotes should have their own type (or should they?)
-   ("eval", Scheme ["a"] (TFun (TVar "a") (TVar "a")))]
+coreEnv = TEnv $ M.fromList $ map (second emptyScheme)
+  [("+",    TFun TInt (TFun TInt TInt)),
+   ("*",    TFun TInt (TFun TInt TInt)),
+   ("-",    TFun TInt (TFun TInt TInt)),
+   ("==",   TFun (TVar "a") (TFun (TVar "a") TBool)),
+   ("if",   TFun TBool (TFun (TVar "a") (TFun (TVar "a") (TVar "a")))),
+   ("and",  TFun TBool (TFun TBool TBool)),
+   ("or",   TFun TBool (TFun TBool TBool)),
+   ("eval", TFun (TVar "a") (TVar "a"))]
 
 repl :: Evaluator ()
 repl = do
