@@ -25,6 +25,7 @@ data ProgramState = ProgramState {
 }
 
 data EvalState = EvalState {
+  evalEnv :: M.Map String Expr
 }
 
 runEval :: EvalState -> ProgramState -> Evaluator a -> IO (a, EvalState)
@@ -37,6 +38,7 @@ type Evaluator a = ReaderT ProgramState (StateT EvalState IO) a
 coreEnv :: TEnv
 coreEnv = TEnv $ M.fromList
   [("+",    Scheme [] (TFun TInt (TFun TInt TInt))),
+   ("*",    Scheme [] (TFun TInt (TFun TInt TInt))),
    ("-",    Scheme [] (TFun TInt (TFun TInt TInt))),
    ("==",   Scheme [] (TFun (TVar "a") (TFun (TVar "a") TBool))),
    ("if",   Scheme [] (TFun TBool (TFun (TVar "a") (TFun (TVar "a") (TVar "a"))))),
@@ -70,6 +72,10 @@ eval (App (App (Id "+") a1) a2)
   = do Number n1 <- eval a1
        Number n2 <- eval a2
        return $ Number (n1 + n2)
+eval (App (App (Id "*") a1) a2)
+  = do Number n1 <- eval a1
+       Number n2 <- eval a2
+       return $ Number (n1 * n2)
 eval (App (App (Id "-") a1) a2)
   = do Number n1 <- eval a1
        Number n2 <- eval a2
@@ -89,11 +95,29 @@ eval (App (App (Id "and") a1) a2)
 eval (App (App (App (Id "if") p) t) f)
   = do Boolean p' <- eval p
        if p' then eval t else eval f
+eval (App (Id "eval") (Quot q))
+  = eval q 
+eval (App (Id x) e2)
+  = do e1 <- eval (Id x)
+       return $ App e1 e2
+eval (App e1 e2)
+  = do e1' <- eval e1
+       e2' <- eval e2
+       eval $ App e1' e2'
+--------------------
+eval (Let x v i)
+  = do s@EvalState{..} <- get
+       put s{ evalEnv = M.insert x v evalEnv }
+       eval i
+eval (Id x)
+  = do EvalState{..} <- get
+       case M.lookup x evalEnv of
+         Just x' -> eval x'
+         Nothing -> return $ Id x
+            --error $ show evalEnv ++ " <- " ++ show x
 eval (List l)
   = do vs <- mapM eval l
        return $ List vs
 eval (Quot q)
   = return $ Quot q
-eval (App (Id "eval") (Quot q))
-  = eval q 
 eval v = return v

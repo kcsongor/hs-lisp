@@ -19,7 +19,7 @@ data Expr = Number Int
           deriving (Eq, Show)
 
 parseString :: String -> Maybe Expr
-parseString s = case runParser toplevel s of
+parseString s = case runParser expr s of
   [] -> Nothing
   ss -> Just $ fst . head $ ss
 
@@ -28,13 +28,10 @@ parseNum s = case runParser number s of
   [] -> Nothing
   n  -> Just $ Number $ fst . head $ n
 
-toplevel :: Parser Expr
-toplevel = app +++ list +++ quote
-
 quote :: Parser Expr
 quote = do
   string "'"
-  s <- toplevel
+  s <- expr
   return $ Quot s
 
 expr :: Parser Expr
@@ -49,9 +46,9 @@ app = do
 
 list :: Parser Expr
 list = do
-  string "(\\"
+  char '['
   s <- form
-  char ')'
+  char ']'
   return $ List s
 
 form :: Parser [Expr]
@@ -87,9 +84,10 @@ name = Id <$> some (letter +++ digit +++ special)
 
 letExpr :: Parser Expr
 letExpr = do
-  string "let"
-  some whitespace
-  lists <- sepBy (many whitespace) expr
-  case lists of
+  string "(let"
+  whitespace
+  s <- form
+  char ')'
+  case s of
     [Id i, e, inExpr] -> return $ Let i e inExpr
-    _              -> failure
+    _                 -> failure
