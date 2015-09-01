@@ -86,14 +86,14 @@ lambda :: Parser Expr
 lambda = do
   string "(\\"
   many whitespace
-  Id i <- name 
+  is   <-  sepBy (some whitespace) name
   many whitespace
   char '.'
   many whitespace
   e    <- expr
   many whitespace
   char ')'
-  return $ Abs i e
+  return $ foldr (\(Id i) -> Abs i) e is
 
 letExpr :: Parser Expr
 letExpr = do
