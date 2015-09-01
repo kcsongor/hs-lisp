@@ -40,12 +40,12 @@ coreEnv = TEnv $ M.fromList
   [("+",    Scheme [] (TFun TInt (TFun TInt TInt))),
    ("*",    Scheme [] (TFun TInt (TFun TInt TInt))),
    ("-",    Scheme [] (TFun TInt (TFun TInt TInt))),
-   ("==",   Scheme [] (TFun (TVar "a") (TFun (TVar "a") TBool))),
-   ("if",   Scheme [] (TFun TBool (TFun (TVar "a") (TFun (TVar "a") (TVar "a"))))),
+   ("==",   Scheme ["a"] (TFun (TVar "a") (TFun (TVar "a") TBool))),
+   ("if",   Scheme ["a"] (TFun TBool (TFun (TVar "a") (TFun (TVar "a") (TVar "a"))))),
    ("and",  Scheme [] (TFun TBool (TFun TBool TBool))),
    ("or",   Scheme [] (TFun TBool (TFun TBool TBool))),
    -- TODO: quotes should have their own type (or should they?)
-   ("eval", Scheme [] (TFun (TVar "a") (TVar "a")))]
+   ("eval", Scheme ["a"] (TFun (TVar "a") (TVar "a")))]
 
 repl :: Evaluator ()
 repl = do
