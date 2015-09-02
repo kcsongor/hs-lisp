@@ -196,6 +196,12 @@ inferSub e (Let x expr1 expr2)
            env     = TEnv (M.insert x t' e')
        (s2, t2) <- inferSub (substitute s1 env) expr2
        return (combine s1 s2, t2)
+inferSub e (Def x expr)
+  = do var <- nextVar
+       let TEnv e' = remove e x
+           env     = TEnv $ M.union e' (M.singleton x (Scheme [] var))
+       (s, t) <- inferSub env expr
+       return (s, t)
 inferSub _ (List [])
   = do var <- nextVar
        return (noSub, TList var)

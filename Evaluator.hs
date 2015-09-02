@@ -117,6 +117,10 @@ eval (Let x v i)
        let s' = s{ evalEnv = M.insert x v evalEnv }
        (i', _) <- liftIO $ runEval s' st (eval i)
        return i'
+eval (Def x expr) -- TODO: pass defs to type inference
+  = do s@PureState{..} <- get
+       put s{ evalEnv = M.insert x expr evalEnv }
+       return expr
 eval (Id x)
   = do PureState{..} <- get
        case M.lookup x evalEnv of
