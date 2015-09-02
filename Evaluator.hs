@@ -21,10 +21,12 @@ import Data.IORef
 
 import qualified Data.Map.Strict as M
 
+-- ProgramState contains the mutable ('global') data of the evaluator
 data ProgramState = ProgramState {
-  counter :: IORef Int
+  counter :: IORef Int -- Just a dummy for now
 }
 
+-- EvalState contains the immutable ('local') data of the evaluator
 data EvalState = EvalState {
   evalEnv :: M.Map String Expr
 }
@@ -110,6 +112,8 @@ eval (App e1 e2)
        eval $ App e1' e2'
 eval (Let x v i)
   = do s@EvalState{..} <- get
+      -- TODO: runEval to not update the state
+      -- (the reader's content might be modified though)
        put s{ evalEnv = M.insert x v evalEnv }
        eval i
 eval (Id x)
