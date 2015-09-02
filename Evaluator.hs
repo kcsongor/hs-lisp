@@ -7,6 +7,7 @@ module Evaluator(
   runEval,
   PureState(..),
   repl,
+  coreEnv,
 ) where
 
 import Language
@@ -26,8 +27,9 @@ data ImpureState = ImpureState {
 }
 
 data PureState = PureState {
-  evalEnv :: M.Map String Expr
-} deriving (Show)
+  evalEnv :: M.Map String Expr,
+  typeEnv :: TEnv
+}
 
 runEval :: PureState -> ImpureState  -> Evaluator a -> IO (a, PureState)
 runEval s r = (`runStateT` s) . (`runReaderT` r)
@@ -53,20 +55,27 @@ repl = do
   line <- liftIO getLine
   when (line /= ":q") $ do 
     ImpureState{..} <- ask
+    p@PureState{..} <- get
     liftIO $ modifyIORef counter (+1)
     case parseString line of
-      Just code ->
-        case runTypeInference coreEnv code of
+      Just code -> do
+        let (tRes, inferEnv) = runTI typeEnv $ inferType code
+        case tRes of
           Left err -> liftIO $ putStrLn err
           Right t' -> do
+            let TEnv typeEnv'  = typeEnv
+            let TEnv typeEnv'' = isEnv inferEnv
+            put p{ typeEnv = TEnv $ M.union typeEnv' typeEnv'' }
             liftIO $ print t'
-            do
-            e <- eval code
-            s <- get
+            e <- deepEval code
             liftIO $ print e
-            liftIO $ print s
       Nothing -> liftIO $ putStrLn "couldn't parse"
     repl
+
+deepEval :: Expr -> Evaluator Expr
+deepEval x = do
+  x' <- eval x
+  if x == x' then return x else deepEval x'
 
 -- | TODO:
 -- define most of the functions using the language itself (implement pattern matching)

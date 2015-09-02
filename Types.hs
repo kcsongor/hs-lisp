@@ -6,6 +6,7 @@ module Types(
   emptyEnv,
   Scheme(..),
   TEnv(..),
+  InferState(..),
   runTI,
   runTypeInference,
   typePerms,
@@ -89,6 +90,9 @@ combine s1 s2 = M.union s1 (M.map (substitute s1) s2)
 remove :: TEnv -> String -> TEnv
 remove (TEnv e) s = TEnv (M.delete s e)
 
+insert :: TEnv -> String -> Scheme -> TEnv
+insert (TEnv e) s t = TEnv (M.insert s t e)
+
 generalise :: TEnv -> Type -> Scheme
 generalise e t = Scheme vars t
   where vars = S.toList (S.difference (freeVars t) (freeVars e))
@@ -120,14 +124,14 @@ tExtractUnion t = t
 
 data InferState = InferState {
   isVars :: Int,
-  isSub  :: Sub
-} deriving (Show)
+  isEnv  :: TEnv
+}
 
 type TI a = ExceptT String (State InferState) a
 
-runTI :: TI a -> (Either String a, InferState)
-runTI = (`runState` initState) . runExceptT
-  where initState = InferState { isVars = 0, isSub = noSub }
+runTI :: TEnv -> TI a -> (Either String a, InferState)
+runTI env = (`runState` initState) . runExceptT
+  where initState = InferState { isVars = 0, isEnv = env }
 
 nextVar :: TI Type
 nextVar = do st@InferState{..} <- get
@@ -197,10 +201,12 @@ inferSub e (Let x expr1 expr2)
        (s2, t2) <- inferSub (substitute s1 env) expr2
        return (combine s1 s2, t2)
 inferSub e (Def x expr)
-  = do var <- nextVar
-       let TEnv e' = remove e x
-           env     = TEnv $ M.union e' (M.singleton x (Scheme [] var))
-       (s, t) <- inferSub env expr
+  = do var     <- nextVar
+       s'@InferState{..} <- get
+       let TEnv e'   = remove e x
+           env       = TEnv $ M.union e' (M.singleton x (Scheme [] var))
+       (s, t)  <- inferSub env expr
+       put s'{  isEnv = insert isEnv x (Scheme [] t) }
        return (s, t)
 inferSub _ (List [])
   = do var <- nextVar
@@ -212,11 +218,12 @@ inferSub e (List (e1 : es))
        return (ss, TList $ substitute s ts)
 inferSub e (Quot q) = inferSub e q
 
-inferType :: TEnv -> Expr -> TI Type
-inferType env expr
-  = do (sub, t) <- inferSub env expr
+inferType :: Expr -> TI Type
+inferType expr
+  = do InferState{..} <- get
+       (sub, t) <- inferSub isEnv expr
        return $ substitute sub t
 
 runTypeInference :: TEnv -> Expr -> Either String Type
 runTypeInference env expr
-  = let (t, _) = runTI $ inferType env expr in t 
+  = let (t, _) = runTI env $ inferType expr in t 

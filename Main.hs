@@ -9,7 +9,7 @@ import qualified Data.Map.Strict as M
 
 main :: IO ()
 main = do 
-  p @ PureState{..}   <- return $ PureState M.empty
+  let p = PureState M.empty coreEnv
   i @ ImpureState{..} <- ImpureState <$> newIORef 0
   putStrLn "Welcome to my simple lisp REPL!"
   runEval p i repl
