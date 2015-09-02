@@ -3,9 +3,9 @@
 
 module Evaluator(
   Evaluator,
-  ProgramState(..),
+  ImpureState(..),
   runEval,
-  EvalState(..),
+  PureState(..),
   repl,
 ) where
 
@@ -21,21 +21,19 @@ import Data.IORef
 
 import qualified Data.Map.Strict as M
 
--- ProgramState contains the mutable ('global') data of the evaluator
-data ProgramState = ProgramState {
+data ImpureState = ImpureState {
   counter :: IORef Int -- Just a dummy for now
 }
 
--- EvalState contains the immutable ('local') data of the evaluator
-data EvalState = EvalState {
+data PureState = PureState {
   evalEnv :: M.Map String Expr
-}
+} deriving (Show)
 
-runEval :: EvalState -> ProgramState -> Evaluator a -> IO (a, EvalState)
+runEval :: PureState -> ImpureState  -> Evaluator a -> IO (a, PureState)
 runEval s r = (`runStateT` s) . (`runReaderT` r)
 
 -- IO needed for REPL
-type Evaluator a = ReaderT ProgramState (StateT EvalState IO) a 
+type Evaluator a = ReaderT ImpureState (StateT PureState IO) a 
 
 --------------------------------------------------------------------------------
 coreEnv :: TEnv
@@ -54,7 +52,7 @@ repl = do
   liftIO $ putStr ">> "
   line <- liftIO getLine
   when (line /= ":q") $ do 
-    ProgramState{..} <- ask
+    ImpureState{..} <- ask
     liftIO $ modifyIORef counter (+1)
     case parseString line of
       Just code ->
@@ -62,8 +60,11 @@ repl = do
           Left err -> liftIO $ putStrLn err
           Right t' -> do
             liftIO $ print t'
+            do
             e <- eval code
+            s <- get
             liftIO $ print e
+            liftIO $ print s
       Nothing -> liftIO $ putStrLn "couldn't parse"
     repl
 
@@ -103,7 +104,7 @@ eval (App (Id x) e2)
   = do e1 <- eval (Id x)
        return $ App e1 e2
 eval (App (Abs x e1) e2)
-  = do s@EvalState{..} <- get
+  = do s@PureState{..} <- get
        put s{ evalEnv = M.insert x e2 evalEnv }
        eval e1
 eval (App e1 e2)
@@ -111,12 +112,13 @@ eval (App e1 e2)
        e2' <- eval e2
        eval $ App e1' e2'
 eval (Let x v i)
-  = do s@EvalState{..} <- get
-      -- TODO: remove the bound expression after evaluating i
-       put s{ evalEnv = M.insert x v evalEnv }
-       eval i
+  = do s@PureState{..} <- get
+       st <- ask
+       let s' = s{ evalEnv = M.insert x v evalEnv }
+       (i', _) <- liftIO $ runEval s' st (eval i)
+       return i'
 eval (Id x)
-  = do EvalState{..} <- get
+  = do PureState{..} <- get
        case M.lookup x evalEnv of
          Just x' -> eval x'
          Nothing -> return $ Id x

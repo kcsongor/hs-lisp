@@ -17,6 +17,7 @@ data Expr = Number Int
           | App Expr Expr
           | Abs String Expr
           | Let String Expr Expr
+          | Def String Expr
           deriving (Eq, Show)
 
 parseString :: String -> Maybe Expr
@@ -36,7 +37,7 @@ quote = do
   return $ Quot s
 
 expr :: Parser Expr
-expr = atom +++ quote +++ lambda +++ letExpr +++ app +++ list
+expr = atom +++ quote +++ lambda +++ def +++ letExpr +++ app +++ list
 
 app :: Parser Expr
 app = do
@@ -115,3 +116,14 @@ letExpr = do
   many whitespace
   char ')'
   return $ Let i e e'
+
+def :: Parser Expr
+def = do
+  string "(def"
+  some whitespace
+  Id i <- name
+  some whitespace
+  e    <- expr 
+  many whitespace
+  char ')'
+  return $ Def i e

@@ -188,6 +188,7 @@ inferSub e (App l r)
        (sr, tr) <- inferSub (substitute sl e) r
        s        <- unify (substitute sr tl) (TFun tr var)
        return (foldr1 combine [s, sr, sl], substitute s var)
+-- TODO: lets could be replaced by lambdas
 inferSub e (Let x expr1 expr2)
   = do (s1, t1) <- inferSub e expr1
        let TEnv e' = remove e x

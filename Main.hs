@@ -9,9 +9,9 @@ import qualified Data.Map.Strict as M
 
 main :: IO ()
 main = do 
-  iProg @ ProgramState{..} <- ProgramState <$> newIORef 0
-  iEval @ EvalState{..}    <- return $ EvalState M.empty
+  p @ PureState{..}   <- return $ PureState M.empty
+  i @ ImpureState{..} <- ImpureState <$> newIORef 0
   putStrLn "Welcome to my simple lisp REPL!"
-  runEval iEval iProg repl
+  runEval p i repl
   c <- readIORef counter
   print c
