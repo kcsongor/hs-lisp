@@ -129,7 +129,7 @@ eval (Let x v i)
 eval (Def x expr) -- TODO: pass defs to type inference
   = do s@PureState{..} <- get
        put s{ evalEnv = M.insert x expr evalEnv }
-       return expr
+       return . Quot $ Id x
 eval (Id x)
   = do PureState{..} <- get
        case M.lookup x evalEnv of
