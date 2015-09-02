@@ -2,11 +2,12 @@
 A simple functional language with a lisp-like syntax written in Haskell
 
 ##### What works:
-- Simple parser
 - type inference
+- lambda calculus
 
 ##### TODO:
 - parser errors (ExeptT transformer)
-- eval (using type inference)
 - macro system
 - user-defined data types
+- dependent types
+- syntax subject to change
