@@ -112,8 +112,7 @@ eval (App e1 e2)
        eval $ App e1' e2'
 eval (Let x v i)
   = do s@EvalState{..} <- get
-      -- TODO: runEval to not update the state
-      -- (the reader's content might be modified though)
+      -- TODO: remove the bound expression after evaluating i
        put s{ evalEnv = M.insert x v evalEnv }
        eval i
 eval (Id x)
@@ -121,7 +120,6 @@ eval (Id x)
        case M.lookup x evalEnv of
          Just x' -> eval x'
          Nothing -> return $ Id x
-            --error $ show evalEnv ++ " <- " ++ show x
 eval (List l)
   = do vs <- mapM eval l
        return $ List vs
