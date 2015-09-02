@@ -1,5 +1,5 @@
 # hs-lisp
-A simple Lisp written in Haskell
+A simple functional language with a lisp-like syntax written in Haskell
 
 ##### What works:
 - Simple parser
