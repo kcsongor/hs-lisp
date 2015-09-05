@@ -66,9 +66,8 @@ repl = do
             let TEnv typeEnv'  = typeEnv
             let TEnv typeEnv'' = isEnv inferEnv
             put p{ typeEnv = TEnv $ M.union typeEnv' typeEnv'' }
-            liftIO $ print t'
             e <- deepEval code
-            liftIO $ print e
+            liftIO . putStrLn $ show e ++ " :: " ++ show t'
       Nothing -> liftIO $ putStrLn "couldn't parse"
     repl
 

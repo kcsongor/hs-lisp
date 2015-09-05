@@ -18,7 +18,19 @@ data Expr = Number Int
           | Abs String Expr
           | Let String Expr Expr
           | Def String Expr
-          deriving (Eq, Show)
+          deriving (Eq)
+
+instance Show Expr where
+  show (Number n)    = show n
+  show (Boolean b)   = show b
+  show (Chars cs)    = show cs
+  show (List exs)    = show exs
+  show (Quot e)      = "'" ++ show e
+  show (App e1 e2)   = "(" ++ show e1 ++ " " ++ show e2 ++ ")"
+  show (Abs s e)     = "(\\" ++ s ++ ". " ++ show e ++ ")"
+  show (Let s e1 e2) = "Let " ++ s ++ " " ++ show e1 ++ " " ++ show e2
+  show (Def s _)     = s
+  show (Id s)        = s
 
 parseString :: String -> Maybe Expr
 parseString s = case runParser expr s of
@@ -80,12 +92,12 @@ boolLit = true <|> false
 
 false :: Parser Expr
 false = do
-  string "false"
+  string "False"
   return $ Boolean False
 
 true :: Parser Expr
 true = do
-  string "true"
+  string "True"
   return $ Boolean True
 
 name :: Parser Expr
