@@ -153,8 +153,7 @@ dataDef = do
   char '('
   many whitespace
   Id i <- name
-  some whitespace
-  tvars <- sepBy (some whitespace) nameS
+  tvars <- (some whitespace >> sepBy (some whitespace) nameS) <|> return []
   many whitespace
   char ')'
   many whitespace
@@ -172,7 +171,8 @@ constructor = do
   char ']'
   return c
   where c' = do Id i <- name
-                tvars <- some whitespace >> sepBy (some whitespace) name
+                some whitespace
+                tvars <- sepBy (some whitespace) name
                 return (i, tvars)
         nullary = do Id i <- name
                      return (i, [])
