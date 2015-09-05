@@ -54,8 +54,8 @@ repl = do
   liftIO $ putStr ">> "
   line <- liftIO getLine
   when (line /= ":q") $ do 
-    ImpureState{..} <- ask
     p@PureState{..} <- get
+    ImpureState{..} <- ask
     liftIO $ modifyIORef counter (+1)
     case parseString line of
       Just code -> do

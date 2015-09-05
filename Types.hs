@@ -31,7 +31,23 @@ data Type = TInt
           | TList Type
           | TFun Type Type 
           | TVar String 
-          deriving (Eq, Ord, Show)
+          deriving (Eq, Ord)
+
+instance Show Type where
+  show TInt  
+    = "Int"
+  show TBool 
+    = "Bool"
+  show TChar 
+    = "Char"
+  show (TFun t t') 
+    = "(" ++ show t ++ " -> " ++ show t' ++ ")"
+  show (TList t)
+    = "[" ++ show t ++ "]"
+  show (TVar a) 
+    = a
+  show (TS ts)
+    = "(" ++ show ts ++ ")"
 data Scheme = Scheme [String] Type deriving (Show)
 
 newtype TEnv = TEnv (M.Map String Scheme)
