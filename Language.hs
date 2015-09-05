@@ -152,7 +152,7 @@ dataDef = do
   some whitespace
   char '('
   many whitespace
-  Id i <- name
+  Id i  <- name
   tvars <- (some whitespace >> sepBy (some whitespace) nameS) <|> return []
   many whitespace
   char ')'
@@ -166,13 +166,8 @@ constructor :: Parser (String, [Expr])
 constructor = do
   char '['
   many whitespace
-  c <- c' <|> nullary
+  Id i  <- name
+  tvars <- (some whitespace >> sepBy (some whitespace) name) <|> return []
   many whitespace
   char ']'
-  return c
-  where c' = do Id i <- name
-                some whitespace
-                tvars <- sepBy (some whitespace) name
-                return (i, tvars)
-        nullary = do Id i <- name
-                     return (i, [])
+  return (i, tvars)
