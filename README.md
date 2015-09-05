@@ -8,6 +8,7 @@ A simple functional language with a lisp-like syntax written in Haskell
 
 ##### TODO:
 - type literals
+- pattern matching
 - parser errors (ExeptT transformer)
 - macro system
 - dependent types
