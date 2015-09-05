@@ -108,6 +108,9 @@ eval (App (App (App (Id "if") p) t) f)
        if p' then eval t else eval f
 eval (App (Id "eval") (Quot q))
   = eval q 
+eval (App (Id "eval") e)
+  = do e' <- eval e
+       return $ (App (Id "eval") e')
 eval (App (Id x) e2)
   = do e1 <- eval (Id x)
        return $ App e1 e2
@@ -118,7 +121,7 @@ eval (App (Abs x e1) e2)
 eval (App e1 e2)
   = do e1' <- eval e1
        e2' <- eval e2
-       eval $ App e1' e2'
+       return $ App e1' e2'
 eval (Let x v i)
   = do s@PureState{..} <- get
        st <- ask
@@ -129,6 +132,14 @@ eval (Def x expr) -- TODO: pass defs to type inference
   = do s@PureState{..} <- get
        put s{ evalEnv = M.insert x expr evalEnv }
        return . Quot $ Id x
+eval (Data n ts cs)
+  = do s@PureState{..} <- get
+       let cs'      = M.fromList $ map (second (generalise typeEnv . cons)) cs
+           TEnv te' = typeEnv
+       put s{ typeEnv = TEnv $ M.union te' cs'}
+       return . Quot $ Id n
+    where constype = TC n (map TVar ts)
+          cons     = foldr (\(Id s) -> TFun (TVar s)) constype
 eval (Id x)
   = do PureState{..} <- get
        case M.lookup x evalEnv of

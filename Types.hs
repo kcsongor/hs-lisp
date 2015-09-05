@@ -1,11 +1,11 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Types(
-  Type(..),
   inferType,
   emptyEnv,
   Scheme(..),
   TEnv(..),
+  Type(..),
   InferState(..),
   runTI,
   runTypeInference,
@@ -13,6 +13,7 @@ module Types(
   tUnion,
   tExtractUnion,
   emptyScheme,
+  generalise,
 ) where
 
 import Language
@@ -24,10 +25,12 @@ import Data.Maybe
 import Control.Monad.State
 import Control.Monad.Except
 
+-- TODO: type literals for data type declaration
 data Type = TInt 
           | TBool
           | TChar
           | TS (S.Set Type)
+          | TC String [Type]
           | TList Type
           | TFun Type Type 
           | TVar String 
@@ -42,12 +45,19 @@ instance Show Type where
     = "Char"
   show (TFun t t') 
     = "(" ++ show t ++ " -> " ++ show t' ++ ")"
+  show (TList TChar)
+    = "String"
   show (TList t)
     = "[" ++ show t ++ "]"
   show (TVar a) 
     = a
   show (TS ts)
     = "(" ++ show ts ++ ")"
+  show (TC n ts)
+    = n ++ " (" ++ (unwords . map show $ ts) ++ ")"
+
+
+
 data Scheme = Scheme [String] Type deriving (Show)
 
 newtype TEnv = TEnv (M.Map String Scheme)
@@ -70,6 +80,8 @@ instance TypeTable Type where
     = freeVars l
   freeVars (TS s)
     = freeVars (S.toList s)
+  freeVars (TC _ ts)
+    = freeVars ts
   freeVars _
     = S.empty
   substitute s (TVar v)
@@ -78,6 +90,8 @@ instance TypeTable Type where
     = TFun (substitute s f1) (substitute s f2)
   substitute s (TList l)
     = TList (substitute s l)
+  substitute s (TC n ts)
+    = TC n (substitute s ts)
   substitute s (TS ts)
     = TS $ S.map (substitute s) ts
   substitute _ t
@@ -180,6 +194,11 @@ unify t (TVar v)
   = bind v t
 unify (TList t1) (TList t2)
   = unify t1 t2
+unify (TC n1 ts1) (TC n2 ts2)
+  | n1 == n2 
+    = do subs <- zipWithM unify ts1 ts2
+         return $ foldr1 combine subs
+  | otherwise = throwError $ "Cannot unify " ++ show n1 ++ " with " ++ show n2
 unify t1 t2
   | t1 == t2  = return noSub
   | otherwise = throwError $ "Cannot unify " ++ show t1 ++ " with " ++ show t2
@@ -202,6 +221,18 @@ inferSub e (Abs l r)
            env     = TEnv $ M.union e' (M.singleton l (Scheme [] var))
        (s, t) <- inferSub env r
        return (s, TFun (substitute s var) t)
+inferSub e (Data n ts cons)
+  -- most of this is not actualy type inference, but type checking
+  = do e' <- foldM updateEnv e ts
+       mapM_ (inferSub e') (concatMap snd cons)
+       ts' <- mapM (inferSub e' . Id) ts
+       let ts'' = map snd ts'
+       return (noSub, TC n ts'')
+  where updateEnv env t
+          = do var <- nextVar
+               let TEnv e' = remove env t
+                   env'    = TEnv $ M.union e' (M.singleton t (Scheme [] var))
+               return env'
 inferSub e (App l r)
   = do var      <- nextVar
        (sl, tl) <- inferSub e l

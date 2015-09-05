@@ -18,6 +18,7 @@ data Expr = Number Int
           | Abs String Expr
           | Let String Expr Expr
           | Def String Expr
+          | Data String [String] [(String, [Expr])]
           deriving (Eq)
 
 instance Show Expr where
@@ -31,6 +32,7 @@ instance Show Expr where
   show (Let s e1 e2) = "Let " ++ s ++ " " ++ show e1 ++ " " ++ show e2
   show (Def s _)     = s
   show (Id s)        = s
+  show (Data n _ _)  = n
 
 parseString :: String -> Maybe Expr
 parseString s = case runParser expr s of
@@ -48,8 +50,9 @@ quote = do
   s <- expr
   return $ Quot s
 
+-- TODO: def and dataDef should only be allowed at the top level
 expr :: Parser Expr
-expr = atom +++ quote +++ lambda +++ def +++ letExpr +++ app +++ list
+expr = atom +++ quote +++ lambda +++ def +++ dataDef +++ letExpr +++ app +++ list
 
 app :: Parser Expr
 app = do
@@ -101,7 +104,10 @@ true = do
   return $ Boolean True
 
 name :: Parser Expr
-name = Id <$> some (letter +++ digit +++ special)
+name = Id <$> nameS
+
+nameS :: Parser String
+nameS = some (letter +++ digit +++ special)
 
 lambda :: Parser Expr
 lambda = do
@@ -139,3 +145,34 @@ def = do
   many whitespace
   char ')'
   return $ Def i e
+
+dataDef :: Parser Expr
+dataDef = do
+  string "(data"
+  some whitespace
+  char '('
+  many whitespace
+  Id i <- name
+  some whitespace
+  tvars <- sepBy (some whitespace) nameS
+  many whitespace
+  char ')'
+  many whitespace
+  cons  <- sepBy (many whitespace) constructor
+  many whitespace
+  char ')'
+  return $ Data i tvars cons
+
+constructor :: Parser (String, [Expr])
+constructor = do
+  char '['
+  many whitespace
+  c <- c' <|> nullary
+  many whitespace
+  char ']'
+  return c
+  where c' = do Id i <- name
+                tvars <- some whitespace >> sepBy (some whitespace) name
+                return (i, tvars)
+        nullary = do Id i <- name
+                     return (i, [])
