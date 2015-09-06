@@ -111,16 +111,13 @@ eval (App (Id "eval") (Quot q))
 eval (App (Id "eval") e)
   = do e' <- eval e
        return $ (App (Id "eval") e')
-eval (App (Id x) e2)
-  = do e1 <- eval (Id x)
-       return $ App e1 e2
 eval (App (Abs x e1) e2)
   = do s@PureState{..} <- get
        put s{ evalEnv = M.insert x e2 evalEnv }
        eval e1
 eval (App e1 e2)
-  = do e1' <- eval e1
-       e2' <- eval e2
+  = do e1' <- deepEval e1
+       e2' <- deepEval e2
        return $ App e1' e2'
 eval (Let x v i)
   = do s@PureState{..} <- get
