@@ -1,5 +1,6 @@
 # hs-lisp
 A simple functional language with a lisp-like syntax written in Haskell
+(heavily inspired by Haskell)
 
 ##### What works:
 - type inference
