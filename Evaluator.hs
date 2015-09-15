@@ -92,8 +92,8 @@ eval (App (App (Id "-") a1) a2)
        Number n2 <- eval a2
        return $ Number (n1 - n2)
 eval (App (App (Id "==") a1) a2)
-  = do a1' <- eval a1
-       a2' <- eval a2
+  = do a1' <- deepEval a1
+       a2' <- deepEval a2
        return $ Boolean (a1' == a2')
 eval (App (App (Id "or") a1) a2)
   = do Boolean a1' <- eval a1
