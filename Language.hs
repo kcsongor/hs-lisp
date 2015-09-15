@@ -16,6 +16,7 @@ data Expr = Number Int
           | Quot Expr
           | App Expr Expr
           | Abs String Expr
+          | PAbs [Expr] -- TODO: function def with multiple patterns
           | Let String Expr Expr
           | Def String Expr
           | Data String [String] [(String, [Expr])]

@@ -38,6 +38,15 @@ runEval s r = (`runStateT` s) . (`runReaderT` r)
 type Evaluator a = ReaderT ImpureState (StateT PureState IO) a 
 
 --------------------------------------------------------------------------------
+-- TODO:
+type Pattern = Expr
+match :: Pattern -> Expr -> Maybe [(Expr, Expr)]
+match (App l1 r1) (App l2 r2)
+  = fmap ((r1, r2) :) (match l1 l2)
+match a b
+  | a == b    = Just []
+  | otherwise = Nothing
+--------------------------------------------------------------------------------
 coreEnv :: TEnv
 coreEnv = TEnv $ M.fromList $ map (second emptyScheme)
   [("+",    TFun TInt (TFun TInt TInt)),
