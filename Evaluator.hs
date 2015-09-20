@@ -39,6 +39,9 @@ type Evaluator a = ReaderT ImpureState (StateT PureState IO) a
 
 --------------------------------------------------------------------------------
 -- TODO:
+testEnv :: TEnv
+testEnv = TEnv $ M.singleton "Test" (Scheme ["a"] (TFun (TVar "a") (TC "Test" [TVar "a"])))
+
 type Pattern = Expr
 match :: Pattern -> Expr -> Maybe [(Expr, Expr)]
 match (App l1 r1) (App l2 r2)
@@ -134,7 +137,7 @@ eval (Let x v i)
        let s' = s{ evalEnv = M.insert x v evalEnv }
        (i', _) <- liftIO $ runEval s' st (eval i)
        return i'
-eval (Def x expr) -- TODO: pass defs to type inference
+eval (Def x expr)
   = do s@PureState{..} <- get
        put s{ evalEnv = M.insert x expr evalEnv }
        return . Quot $ Id x
@@ -143,6 +146,7 @@ eval (Data n ts cs)
        let cs'      = M.fromList $ map (second (generalise typeEnv . cons)) cs
            TEnv te' = typeEnv
        put s{ typeEnv = TEnv $ M.union te' cs'}
+       liftIO $ print cs'
        return . Quot $ Id n
     where constype = TC n (map TVar ts)
           cons     = foldr (\(Id s) -> TFun (TVar s)) constype
