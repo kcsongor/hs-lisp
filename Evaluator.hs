@@ -119,7 +119,7 @@ eval (App (Id "eval") (Quot q))
   = eval q 
 eval (App (Id "eval") e)
   = do e' <- eval e
-       return $ (App (Id "eval") e')
+       return $ App (Id "eval") e'
 eval (App (Abs x e1) e2)
   = do s@PureState{..} <- get
        put s{ evalEnv = M.insert x e2 evalEnv }
