@@ -6,10 +6,10 @@ A simple functional language with a lisp-like syntax written in Haskell
 - type inference
 - lambda calculus
 - user-defined data types (only with type variables for now)
+- pattern matching
 
 ##### TODO:
 - type literals
-- pattern matching
 - parser errors (ExeptT transformer)
 - macro system
 - dependent types
