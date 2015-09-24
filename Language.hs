@@ -3,6 +3,7 @@ module Language(
   Expr(..),
   parseString,
   parseNum,
+  match,
 ) where
 
 import Parser
@@ -15,8 +16,9 @@ data Expr = Number Int
           | List [Expr]
           | Quot Expr
           | App Expr Expr
-          | Abs String Expr
-          | Let String Expr Expr
+          | Abs Expr Expr
+          | PAbs [Expr] -- TODO: function def with multiple patterns
+          | Let Expr Expr Expr
           | Def String Expr
           | Data String [String] [(String, [Expr])]
           deriving (Eq)
@@ -28,11 +30,24 @@ instance Show Expr where
   show (List exs)    = show exs
   show (Quot e)      = "'" ++ show e
   show (App e1 e2)   = "(" ++ show e1 ++ " " ++ show e2 ++ ")"
-  show (Abs s e)     = "(\\" ++ s ++ ". " ++ show e ++ ")"
-  show (Let s e1 e2) = "Let " ++ s ++ " " ++ show e1 ++ " " ++ show e2
+  show (Abs s e)     = "(\\" ++ show s ++ ". " ++ show e ++ ")"
+  show (Let s e1 e2) = "Let " ++ show s ++ " " ++ show e1 ++ " " ++ show e2
   show (Def s _)     = s
   show (Id s)        = s
   show (Data n _ _)  = n
+
+type Pattern = Expr
+match :: Pattern -> Expr -> Maybe [(String, Expr)]
+match (App (Id cons1) (Id r1)) (App (Id cons2) r2)
+  | cons1 == cons2 = Just [(r1, r2)]
+  | otherwise      = Nothing
+match (App l1 (Id r1)) (App l2 r2)
+  = fmap ((r1, r2) :) (match l1 l2)
+match (Id p) x
+  = Just [(p, x)]
+match a b
+  | a == b    = Just []
+  | otherwise = Nothing
 
 parseString :: String -> Maybe Expr
 parseString s = case runParser expr s of
@@ -113,20 +128,20 @@ lambda :: Parser Expr
 lambda = do
   string "(\\"
   many whitespace
-  is   <-  sepBy (some whitespace) name
+  is   <-  sepBy (some whitespace) (expr)
   many whitespace
   char '.'
   many whitespace
   e    <- expr
   many whitespace
   char ')'
-  return $ foldr (\(Id i) -> Abs i) e is
+  return $ foldr Abs e is
 
 letExpr :: Parser Expr
 letExpr = do
   string "(let"
   some whitespace
-  Id i <- name
+  i <- name
   some whitespace
   e    <- expr 
   some whitespace

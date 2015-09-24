@@ -216,13 +216,21 @@ inferSub _ (Boolean _)
 inferSub _ (Chars _)
   = return (noSub, TList TChar)
 inferSub e (Abs l r)
-  = do var <- nextVar
-       let TEnv e' = remove e l
-           env     = TEnv $ M.union e' (M.singleton l (Scheme [] var))
-       (s, t) <- inferSub env r
-       return (s, TFun (substitute s var) t)
+  = do env <- foldM (\e'@(TEnv tenv) s -> do
+                -- make sure we don't have type constructor with the same name
+                case M.lookup s tenv of
+                  Nothing -> do
+                    var <- nextVar
+                    let TEnv e'' = remove e' s
+                        env = TEnv $ M.union e'' (M.singleton s (Scheme [] var))
+                    return env
+                  _ -> return e'
+              ) e (ids l)
+       (sl, tl) <- inferSub env l
+       (sr, tr) <- inferSub (substitute sl env) r
+       return(combine sl sr, TFun (substitute sr tl) tr)
+  where ids x = map fst (fromJust (match x x))
 inferSub e (Data n ts cons)
-  -- most of this is not actualy type inference, but type checking
   = do e' <- foldM updateEnv e ts
        mapM_ (inferSub e') (concatMap snd cons)
        ts' <- mapM (inferSub e' . Id) ts
@@ -239,21 +247,16 @@ inferSub e (App l r)
        (sr, tr) <- inferSub (substitute sl e) r
        s        <- unify (substitute sr tl) (TFun tr var)
        return (foldr1 combine [s, sr, sl], substitute s var)
--- TODO: lets could be replaced by lambdas
 inferSub e (Let x expr1 expr2)
-  = do (s1, t1) <- inferSub e expr1
-       let TEnv e' = remove e x
-           t'      = generalise (substitute s1 e) t1
-           env     = TEnv (M.insert x t' e')
-       (s2, t2) <- inferSub (substitute s1 env) expr2
-       return (combine s1 s2, t2)
+  = inferSub e (App (Abs x expr2) expr1)
 inferSub e (Def x expr)
   = do var     <- nextVar
        s'@InferState{..} <- get
        let TEnv e'   = remove e x
            env       = TEnv $ M.union e' (M.singleton x (Scheme [] var))
+           TEnv e''  = env
        (s, t)  <- inferSub env expr
-       put s'{  isEnv = insert isEnv x (Scheme [] t) }
+       put s'{  isEnv = insert isEnv x (generalise env t) }
        return (s, t)
 inferSub _ (List [])
   = do var <- nextVar

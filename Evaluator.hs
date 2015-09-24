@@ -111,18 +111,23 @@ eval (App (Id "eval") (Quot q))
 eval (App (Id "eval") e)
   = do e' <- eval e
        return $ App (Id "eval") e'
-eval (App (Abs x e1) e2) = eval (Let x e1 e2)
+eval (App (Abs x e1) e2)
+  = do s@PureState{..} <- get
+       case m of
+         Just mapping -> do
+            let env' = M.fromList mapping
+                s'   = s{ evalEnv = M.union env' evalEnv }
+            st <- ask
+            (e1', _) <- liftIO $ runEval s' st (eval e1)
+            return e1'
+         Nothing -> return (Id "TODO: pattern fail")
+    where m = match x e2
 eval (App e1 e2)
   = do e1' <- deepEval e1
        e2' <- deepEval e2
        return $ App e1' e2'
-eval (Let x v i)
-  = do s@PureState{..} <- get
-       st <- ask
-       let s' = s{ evalEnv = M.insert x v evalEnv }
-       (i', _) <- liftIO $ runEval s' st (eval i)
-       return i'
-eval (Def x expr) -- TODO: pass defs to type inference
+eval (Let x v i) = eval (App (Abs x i) v)
+eval (Def x expr)
   = do s@PureState{..} <- get
        put s{ evalEnv = M.insert x expr evalEnv }
        return . Quot $ Id x
@@ -131,6 +136,7 @@ eval (Data n ts cs)
        let cs'      = M.fromList $ map (second (generalise typeEnv . cons)) cs
            TEnv te' = typeEnv
        put s{ typeEnv = TEnv $ M.union te' cs'}
+       liftIO $ print cs'
        return . Quot $ Id n
     where constype = TC n (map TVar ts)
           cons     = foldr (\(Id s) -> TFun (TVar s)) constype
