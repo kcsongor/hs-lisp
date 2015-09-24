@@ -136,7 +136,6 @@ eval (Data n ts cs)
        let cs'      = M.fromList $ map (second (generalise typeEnv . cons)) cs
            TEnv te' = typeEnv
        put s{ typeEnv = TEnv $ M.union te' cs'}
-       liftIO $ print cs'
        return . Quot $ Id n
     where constype = TC n (map TVar ts)
           cons     = foldr (\(Id s) -> TFun (TVar s)) constype

@@ -141,7 +141,7 @@ letExpr :: Parser Expr
 letExpr = do
   string "(let"
   some whitespace
-  i <- name
+  i <- expr
   some whitespace
   e    <- expr 
   some whitespace
