@@ -216,13 +216,21 @@ inferSub _ (Boolean _)
 inferSub _ (Chars _)
   = return (noSub, TList TChar)
 inferSub e (Abs l r)
-  = do var <- nextVar
-       let TEnv e' = remove e l
-           env     = TEnv $ M.union e' (M.singleton l (Scheme [] var))
-       (s, t) <- inferSub env r
-       return (s, TFun (substitute s var) t)
+  = do env <- foldM (\e'@(TEnv tenv) s -> do
+                -- make sure we don't have type constructor with the same name
+                case M.lookup s tenv of
+                  Nothing -> do
+                    var <- nextVar
+                    let TEnv e'' = remove e' s
+                        env = TEnv $ M.union e'' (M.singleton s (Scheme [] var))
+                    return env
+                  _ -> return e'
+              ) e (ids l)
+       (sl, tl) <- inferSub env l
+       (sr, tr) <- inferSub (substitute sl env) r
+       return(combine sl sr, TFun (substitute sr tl) tr)
+  where ids x = map fst (fromJust (match x x))
 inferSub e (Data n ts cons)
-  -- most of this is not actualy type inference, but type checking
   = do e' <- foldM updateEnv e ts
        mapM_ (inferSub e') (concatMap snd cons)
        ts' <- mapM (inferSub e' . Id) ts
@@ -252,8 +260,9 @@ inferSub e (Def x expr)
        s'@InferState{..} <- get
        let TEnv e'   = remove e x
            env       = TEnv $ M.union e' (M.singleton x (Scheme [] var))
+           TEnv e''  = env
        (s, t)  <- inferSub env expr
-       put s'{  isEnv = insert isEnv x (Scheme [] t) }
+       put s'{  isEnv = insert isEnv x (generalise env t) }
        return (s, t)
 inferSub _ (List [])
   = do var <- nextVar

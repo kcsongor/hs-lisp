@@ -38,18 +38,6 @@ runEval s r = (`runStateT` s) . (`runReaderT` r)
 type Evaluator a = ReaderT ImpureState (StateT PureState IO) a 
 
 --------------------------------------------------------------------------------
--- TODO:
-testEnv :: TEnv
-testEnv = TEnv $ M.singleton "Test" (Scheme ["a"] (TFun (TVar "a") (TC "Test" [TVar "a"])))
-
-type Pattern = Expr
-match :: Pattern -> Expr -> Maybe [(Expr, Expr)]
-match (App l1 r1) (App l2 r2)
-  = fmap ((r1, r2) :) (match l1 l2)
-match a b
-  | a == b    = Just []
-  | otherwise = Nothing
---------------------------------------------------------------------------------
 coreEnv :: TEnv
 coreEnv = TEnv $ M.fromList $ map (second emptyScheme)
   [("+",    TFun TInt (TFun TInt TInt)),
@@ -123,10 +111,19 @@ eval (App (Id "eval") (Quot q))
 eval (App (Id "eval") e)
   = do e' <- eval e
        return $ App (Id "eval") e'
+--eval (App (Abs (Id x) e1) e2)
+--  = do s@PureState{..} <- get
+--       put s{ evalEnv = M.insert x e2 evalEnv }
+--       eval e1
 eval (App (Abs x e1) e2)
   = do s@PureState{..} <- get
-       put s{ evalEnv = M.insert x e2 evalEnv }
-       eval e1
+       case m of
+         Just mapping -> do
+            let env' = M.fromList mapping
+            put s{ evalEnv = M.union env' evalEnv }
+            eval e1
+         Nothing -> return (Id "TODO: pattern fail")
+    where m = match x e2
 eval (App e1 e2)
   = do e1' <- deepEval e1
        e2' <- deepEval e2
