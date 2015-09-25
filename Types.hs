@@ -206,7 +206,12 @@ unify t1 t2
 inferSub :: TEnv -> Expr -> TI (Sub, Type)
 inferSub (TEnv e) (Id v)
   = case M.lookup v e of
-      Nothing     -> throwError $ "unbound variable " ++ v
+      Nothing     -> throwError $ "Unbound variable " ++ v
+      Just scheme -> do t <- refreshVars scheme
+                        return (noSub, t)
+inferSub (TEnv e) (Cons v)
+  = case M.lookup v e of
+      Nothing     -> throwError $ "Constructor not defined " ++ v
       Just scheme -> do t <- refreshVars scheme
                         return (noSub, t)
 inferSub _ (Number _)

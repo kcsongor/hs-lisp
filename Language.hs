@@ -13,6 +13,7 @@ data Expr = Number Int
           | Boolean Bool
           | Chars String
           | Id String 
+          | Cons String 
           | List [Expr]
           | Quot Expr
           | App Expr Expr
@@ -34,11 +35,13 @@ instance Show Expr where
   show (Let s e1 e2) = "Let " ++ show s ++ " " ++ show e1 ++ " " ++ show e2
   show (Def s _)     = s
   show (Id s)        = s
+  show (Cons s)      = s
   show (Data n _ _)  = n
+  show (PAbs cs)     = show cs
 
 type Pattern = Expr
 match :: Pattern -> Expr -> Maybe [(String, Expr)]
-match (App (Id cons1) (Id r1)) (App (Id cons2) r2)
+match (App (Cons cons1) (Id r1)) (App (Cons cons2) r2)
   | cons1 == cons2 = Just [(r1, r2)]
   | otherwise      = Nothing
 match (App l1 (Id r1)) (App l2 r2)
@@ -91,7 +94,7 @@ form = do
   return s
 
 atom :: Parser Expr
-atom = numLit <|> boolLit <|> name <|> stringLit
+atom = numLit <|> boolLit <|> cons <|> name <|> stringLit
 
 numLit :: Parser Expr
 numLit = do
@@ -121,6 +124,9 @@ true = do
 name :: Parser Expr
 name = Id <$> nameS
 
+cons :: Parser Expr
+cons = Cons <$> fmap (:[]) upper ||> many (letter +++ digit +++ special)
+
 nameS :: Parser String
 nameS = some (letter +++ digit +++ special)
 
@@ -128,7 +134,7 @@ lambda :: Parser Expr
 lambda = do
   string "(\\"
   many whitespace
-  is   <-  sepBy (some whitespace) (expr)
+  is   <-  sepBy (some whitespace) expr
   many whitespace
   char '.'
   many whitespace
@@ -172,16 +178,16 @@ dataDef = do
   many whitespace
   char ')'
   many whitespace
-  cons  <- sepBy (many whitespace) constructor
+  c  <- sepBy (many whitespace) consDef
   many whitespace
   char ')'
-  return $ Data i tvars cons
+  return $ Data i tvars c
 
-constructor :: Parser (String, [Expr])
-constructor = do
+consDef :: Parser (String, [Expr])
+consDef = do
   char '['
   many whitespace
-  Id i  <- name
+  Cons i  <- cons 
   tvars <- (some whitespace >> sepBy (some whitespace) name) <|> return []
   many whitespace
   char ']'
