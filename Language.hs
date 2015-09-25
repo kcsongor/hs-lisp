@@ -130,46 +130,49 @@ cons = Cons <$> fmap (:[]) upper ||> many (letter +++ digit +++ special)
 nameS :: Parser String
 nameS = some (letter +++ digit +++ special)
 
+brackets :: Char -> Char -> Parser a -> Parser a
+brackets open close p = do
+  char open
+  many whitespace
+  p' <- p
+  many whitespace
+  char close
+  return p'
+
 lambda :: Parser Expr
-lambda = do
-  string "(\\"
+lambda = brackets '(' ')' $ do
+  string "\\"
   many whitespace
   is   <-  sepBy (some whitespace) expr
   many whitespace
   char '.'
   many whitespace
   e    <- expr
-  many whitespace
-  char ')'
   return $ foldr Abs e is
 
 letExpr :: Parser Expr
-letExpr = do
-  string "(let"
+letExpr = brackets '(' ')' $ do
+  string "let"
   some whitespace
   i <- expr
   some whitespace
   e    <- expr 
   some whitespace
   e'   <- expr
-  many whitespace
-  char ')'
   return $ Let i e e'
 
 def :: Parser Expr
-def = do
-  string "(def"
+def = brackets '(' ')' $ do
+  string "def"
   some whitespace
   Id i <- name
   some whitespace
   e    <- expr 
-  many whitespace
-  char ')'
   return $ Def i e
 
 dataDef :: Parser Expr
-dataDef = do
-  string "(data"
+dataDef = brackets '(' ')' $ do
+  string "data"
   some whitespace
   char '('
   many whitespace
@@ -179,16 +182,10 @@ dataDef = do
   char ')'
   many whitespace
   c  <- sepBy (many whitespace) consDef
-  many whitespace
-  char ')'
   return $ Data i tvars c
 
 consDef :: Parser (String, [Expr])
-consDef = do
-  char '['
-  many whitespace
+consDef = brackets '[' ']' $ do
   Cons i  <- cons 
   tvars <- (some whitespace >> sepBy (some whitespace) name) <|> return []
-  many whitespace
-  char ']'
   return (i, tvars)
