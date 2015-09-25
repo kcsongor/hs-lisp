@@ -66,7 +66,7 @@ repl = do
     case parseExpr line of
       Just code -> runExpr code
       Nothing -> throwError "Couldn't parse"
-  repl
+    repl
   -- print the error, then continue
   `catchError` (\s -> void $ liftIO (putStrLn $ "Error: " ++ s) >> repl)
 
@@ -84,6 +84,10 @@ runExpr code = do
       liftIO . putStrLn $ show e ++ " :: " ++ show t'
 
 deepEval :: Expr -> Evaluator Expr
+deepEval (Abs x v) = do
+  x' <- deepEval x
+  v'  <- deepEval v
+  return $ Abs x' v'
 deepEval x = do
   x' <- eval x
   if x == x' then return x else deepEval x'
@@ -91,30 +95,40 @@ deepEval x = do
 -- | TODO:
 -- define most of the functions using the language itself (implement pattern matching)
 eval :: Expr -> Evaluator Expr
-eval (App (App (Id "+") a1) a2)
-  = do Number n1 <- eval a1
-       Number n2 <- eval a2
-       return $ Number (n1 + n2)
-eval (App (App (Id "*") a1) a2)
-  = do Number n1 <- eval a1
-       Number n2 <- eval a2
-       return $ Number (n1 * n2)
-eval (App (App (Id "-") a1) a2)
-  = do Number n1 <- eval a1
-       Number n2 <- eval a2
-       return $ Number (n1 - n2)
+eval (App (App f@(Id "+") a1) a2)
+  = do n1 <- eval a1
+       n2 <- eval a2
+       case (n1, n2) of
+        (Number n1', Number n2') -> return $ Number (n1' + n2')
+        (a1', a2')               -> return $ App (App f a1') a2'
+eval (App (App f@(Id "*") a1) a2)
+  = do n1 <- eval a1
+       n2 <- eval a2
+       case (n1, n2) of
+        (Number n1', Number n2') -> return $ Number (n1' * n2')
+        (a1', a2')               -> return $ App (App f a1') a2'
+eval (App (App f@(Id "-") a1) a2)
+  = do n1 <- eval a1
+       n2 <- eval a2
+       case (n1, n2) of
+        (Number n1', Number n2') -> return $ Number (n1' - n2')
+        (a1', a2')               -> return $ App (App f a1') a2'
 eval (App (App (Id "==") a1) a2)
   = do a1' <- deepEval a1
        a2' <- deepEval a2
        return $ Boolean (a1' == a2')
-eval (App (App (Id "or") a1) a2)
-  = do Boolean a1' <- eval a1
-       Boolean a2' <- eval a2
-       return $ Boolean (a1' || a2')
-eval (App (App (Id "and") a1) a2)
-  = do Boolean a1' <- eval a1
-       Boolean a2' <- eval a2
-       return $ Boolean (a1' && a2')
+eval (App (App f@(Id "or") a1) a2)
+  = do n1 <- eval a1
+       n2 <- eval a2
+       case (n1, n2) of
+        (Boolean n1', Boolean n2') -> return $ Boolean (n1' || n2')
+        (a1', a2')                 -> return $ App (App f a1') a2'
+eval (App (App f@(Id "and") a1) a2)
+  = do n1 <- eval a1
+       n2 <- eval a2
+       case (n1, n2) of
+        (Boolean n1', Boolean n2') -> return $ Boolean (n1' && n2')
+        (a1', a2')                 -> return $ App (App f a1') a2'
 eval (App (App (App (Id "if") p) t) f)
   = do Boolean p' <- eval p
        if p' then eval t else eval f
@@ -125,14 +139,13 @@ eval (App (Id "eval") e)
        return $ App (Id "eval") e'
 eval (App (Abs x e1) e2)
   = do s@PureState{..} <- get
-       when (isNothing m) $ throwError $ "Irrefutable pattern: " ++ show x 
        let env' = M.fromList (fromJust m)
            s'   = s{ evalEnv = M.union env' evalEnv }
-       st <- ask
-       (ret, _) <- liftIO $ runEval s' st (eval e1)
-       case ret of
-         Right e1' -> return e1'
-         Left  err -> throwError err
+       when (isNothing m) $ throwError $ "Irrefutable pattern: " ++ show x 
+       put s'
+       e1' <- deepEval e1
+       put s
+       return e1'
     where m = match x e2
 eval (App e1 e2)
   = do e1' <- deepEval e1
@@ -163,7 +176,7 @@ eval (Data n ts cs)
 eval (Id x)
   = do PureState{..} <- get
        case M.lookup x evalEnv of
-         Just x' -> eval x'
+         Just x' -> deepEval x'
          Nothing -> return $ Id x
 eval (List l)
   = do vs <- mapM eval l
