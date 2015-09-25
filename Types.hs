@@ -117,6 +117,10 @@ noSub = M.empty
 combine :: Sub -> Sub -> Sub
 combine s1 s2 = M.union s1 (M.map (substitute s1) s2)
 
+combineAll :: [Sub] -> Sub
+combineAll [] = noSub
+combineAll ss = foldr1 combine ss
+
 remove :: TEnv -> String -> TEnv
 remove (TEnv e) s = TEnv (M.delete s e)
 
@@ -197,7 +201,7 @@ unify (TList t1) (TList t2)
 unify (TC n1 ts1) (TC n2 ts2)
   | n1 == n2 
     = do subs <- zipWithM unify ts1 ts2
-         return $ foldr1 combine subs
+         return $ combineAll subs
   | otherwise = throwError $ "Cannot unify " ++ show n1 ++ " with " ++ show n2
 unify t1 t2
   | t1 == t2  = return noSub
@@ -251,7 +255,7 @@ inferSub e (App l r)
        (sl, tl) <- inferSub e l
        (sr, tr) <- inferSub (substitute sl e) r
        s        <- unify (substitute sr tl) (TFun tr var)
-       return (foldr1 combine [s, sr, sl], substitute s var)
+       return (combineAll [s, sr, sl], substitute s var)
 inferSub e (Let x expr1 expr2)
   = inferSub e (App (Abs x expr2) expr1)
 inferSub e (Def x expr)
