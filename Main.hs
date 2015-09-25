@@ -12,6 +12,6 @@ main = do
   let p = PureState M.empty coreEnv
   i @ ImpureState{..} <- ImpureState <$> newIORef 0
   putStrLn "Welcome to my simple lisp REPL!"
-  runEval p i repl
+  runEval p i (runCode "(data (Maybe a) [Just a] [Nothing]) (def fromJust (\\(Just x).x))" >> repl)
   c <- readIORef counter
   print c

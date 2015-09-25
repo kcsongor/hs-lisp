@@ -7,6 +7,7 @@ module Evaluator(
   runEval,
   PureState(..),
   repl,
+  runCode,
   coreEnv,
 ) where
 
@@ -51,28 +52,36 @@ coreEnv = TEnv $ M.fromList $ map (second emptyScheme)
    ("or",   TFun TBool (TFun TBool TBool)),
    ("eval", TFun (TVar "a") (TVar "a"))]
 
+runCode :: String -> Evaluator ()
+runCode code = forM_ exprs runExpr
+  where exprs = parseCode code
+
 repl :: Evaluator ()
 repl = do
   liftIO $ putStr ">> "
   line <- liftIO getLine
   when (line /= ":q") $ do 
-    p@PureState{..} <- get
     ImpureState{..} <- ask
     liftIO $ modifyIORef counter (+1)
-    case parseString line of
-      Just code -> do
-        let (tRes, inferEnv) = runTI typeEnv $ inferType code
-        case tRes of
-          Left err -> liftIO $ putStrLn err
-          Right t' -> do
-            let TEnv typeEnv'  = typeEnv
-            let TEnv typeEnv'' = isEnv inferEnv
-            put p{ typeEnv = TEnv $ M.union typeEnv' typeEnv'' }
-            e <- deepEval code
-            liftIO . putStrLn $ show e ++ " :: " ++ show t'
+    case parseExpr line of
+      Just code -> runExpr code
       Nothing -> throwError "Couldn't parse"
-    -- print the error, then continue
-    repl `catchError` \s -> liftIO (putStrLn s) >> repl
+  repl
+  -- print the error, then continue
+  `catchError` (\s -> void $ liftIO (putStrLn $ "Error: " ++ s) >> repl)
+
+runExpr :: Expr -> Evaluator ()
+runExpr code = do
+  p@PureState{..} <- get
+  let (tRes, inferEnv) = runTI typeEnv $ inferType code
+  case tRes of
+    Left err -> throwError err
+    Right t' -> do
+      let TEnv typeEnv'  = typeEnv
+      let TEnv typeEnv'' = isEnv inferEnv
+      put p{ typeEnv = TEnv $ M.union typeEnv' typeEnv'' }
+      e <- deepEval code
+      liftIO . putStrLn $ show e ++ " :: " ++ show t'
 
 deepEval :: Expr -> Evaluator Expr
 deepEval x = do
@@ -146,7 +155,6 @@ eval (Data n ts cs)
        -- see if constructor already exists
        when (M.size e_cons > 0) $ throwError $
          "Constructor " ++ (show . head . fsts $ e_cons) ++ " is already defined"
-       liftIO $ print te'
        put s{ typeEnv = TEnv $ M.union te' cs'}
        return . Quot $ Id n
     where constype = TC n (map TVar ts)

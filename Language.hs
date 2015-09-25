@@ -1,7 +1,8 @@
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
 module Language(
   Expr(..),
-  parseString,
+  parseExpr,
+  parseCode,
   parseNum,
   match,
 ) where
@@ -52,8 +53,14 @@ match a b
   | a == b    = Just []
   | otherwise = Nothing
 
-parseString :: String -> Maybe Expr
-parseString s = case runParser expr s of
+parseCode :: String -> [Expr]
+parseCode c = case runParser parser c of
+  [] -> []
+  ss -> fst . head $ ss
+  where parser = sepBy (some whitespace) expr
+
+parseExpr :: String -> Maybe Expr
+parseExpr s = case runParser expr s of
   [] -> Nothing
   ss -> Just $ fst . head $ ss
 
