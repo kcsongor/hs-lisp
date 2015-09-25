@@ -1,10 +1,6 @@
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-
 module Parser(
   Parser,
   runParser,
-  (>>>),
   (||>),
   (+++),
   failure,
@@ -27,43 +23,18 @@ module Parser(
 
 import Control.Applicative
 import Control.Monad
+import Control.Monad.State
 
 import Data.Monoid
 
--- TODO: parser should be a State monad
-newtype Parser a 
-  = Parser { runParser :: String -> [(a, String)]} deriving (Functor)
+type B = []
 
--- Instances -------------------------------------------------------------------
-instance Applicative Parser where
-  pure = return
-  (<*>) = ap
+type Parser a = StateT String B a
 
--- | gives 'many' and 'some' for free
-instance Alternative Parser where
-  empty = failure 
-  p1 <|> p2 = Parser $ \s ->
-    case runParser p1 s of
-      []     -> runParser p2 s
-      result -> result
-
-instance Monad Parser where
-  return x = Parser $ \s -> [(x, s)]
-  p1 >>= f = Parser $
-    \s -> concat [runParser (f x) s' | (x, s') <- runParser p1 s]
-
-instance MonadPlus Parser where
-  mzero = failure
-  mplus = (+++)
+runParser :: Parser a -> String -> B (a, String)
+runParser = runStateT
 
 -- Combinators -----------------------------------------------------------------
-(>>>) :: Parser a -> Parser b -> Parser (a, b)
-p1 >>> p2 = do
-  x <- p1
-  y <- p2
-  return (x, y)
-
--- Not sure if this is needed
 (||>) :: Monoid a => Parser a -> Parser a -> Parser a
 p1 ||> p2 = do
   x <- p1
@@ -71,15 +42,16 @@ p1 ||> p2 = do
   return $ mappend x y
 
 (+++) :: Parser a -> Parser a -> Parser a
-p1 +++ p2 = Parser $ \s -> runParser p1 s ++ runParser p2 s
+(+++) = mplus
 
 failure :: Parser a
-failure = Parser $ const []
+failure = lift mzero
 
 item :: Parser Char
-item = Parser $ \x -> case x of
-                      []       -> []
-                      (a : as) -> [(a, as)]
+item = do
+  (x : xs) <- get
+  put xs
+  return x
 
 sat :: (Char -> Bool) -> Parser Char
 sat p = do
