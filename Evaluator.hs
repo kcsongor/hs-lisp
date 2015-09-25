@@ -20,6 +20,7 @@ import Control.Monad.Except
 import Control.Arrow
 
 import Data.IORef
+import Data.Maybe
 
 import qualified Data.Map.Strict as M
 
@@ -115,16 +116,14 @@ eval (App (Id "eval") e)
        return $ App (Id "eval") e'
 eval (App (Abs x e1) e2)
   = do s@PureState{..} <- get
-       case m of
-         Just mapping -> do
-            let env' = M.fromList mapping
-                s'   = s{ evalEnv = M.union env' evalEnv }
-            st <- ask
-            (ret, _) <- liftIO $ runEval s' st (eval e1)
-            case ret of
-              Right e1' -> return e1'
-              Left  err -> throwError err
-         Nothing -> throwError $ "Irrefutable pattern: " ++ show x
+       when (isNothing m) $ throwError $ "Irrefutable pattern: " ++ show x 
+       let env' = M.fromList (fromJust m)
+           s'   = s{ evalEnv = M.union env' evalEnv }
+       st <- ask
+       (ret, _) <- liftIO $ runEval s' st (eval e1)
+       case ret of
+         Right e1' -> return e1'
+         Left  err -> throwError err
     where m = match x e2
 eval (App e1 e2)
   = do e1' <- deepEval e1
@@ -139,10 +138,20 @@ eval (Data n ts cs)
   = do s@PureState{..} <- get
        let cs'      = M.fromList $ map (second (generalise typeEnv . cons)) cs
            TEnv te' = typeEnv
+           e_type = M.lookup n te'
+           e_cons = M.intersection te' cs'
+       -- see if type already exists $ TODO: types need to be stored
+       when (isJust e_type) $ throwError $
+         "Type " ++ (show . fromJust $ e_type) ++ " is already defined"
+       -- see if constructor already exists
+       when (M.size e_cons > 0) $ throwError $
+         "Constructor " ++ (show . head . fsts $ e_cons) ++ " is already defined"
+       liftIO $ print te'
        put s{ typeEnv = TEnv $ M.union te' cs'}
        return . Quot $ Id n
     where constype = TC n (map TVar ts)
           cons     = foldr (\(Id s) -> TFun (TVar s)) constype
+          fsts m   = map fst (M.toList m)
 eval (Id x)
   = do PureState{..} <- get
        case M.lookup x evalEnv of
