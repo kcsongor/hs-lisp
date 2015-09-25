@@ -16,6 +16,7 @@ import Types
 import Control.Monad
 import Control.Monad.Reader
 import Control.Monad.State
+import Control.Monad.Except
 import Control.Arrow
 
 import Data.IORef
@@ -31,11 +32,11 @@ data PureState = PureState {
   typeEnv :: TEnv
 }
 
-runEval :: PureState -> ImpureState  -> Evaluator a -> IO (a, PureState)
-runEval s r = (`runStateT` s) . (`runReaderT` r)
+runEval :: PureState -> ImpureState  -> Evaluator a -> IO (Either String a, PureState)
+runEval s r = (`runStateT` s) . (`runReaderT` r) . runExceptT
 
 -- IO needed for REPL
-type Evaluator a = ReaderT ImpureState (StateT PureState IO) a 
+type Evaluator a = ExceptT String (ReaderT ImpureState (StateT PureState IO)) a 
 
 --------------------------------------------------------------------------------
 coreEnv :: TEnv
@@ -68,8 +69,9 @@ repl = do
             put p{ typeEnv = TEnv $ M.union typeEnv' typeEnv'' }
             e <- deepEval code
             liftIO . putStrLn $ show e ++ " :: " ++ show t'
-      Nothing -> liftIO $ putStrLn "couldn't parse"
-    repl
+      Nothing -> throwError "Couldn't parse"
+    -- print the error, then continue
+    repl `catchError` \s -> liftIO (putStrLn s) >> repl
 
 deepEval :: Expr -> Evaluator Expr
 deepEval x = do
@@ -118,9 +120,11 @@ eval (App (Abs x e1) e2)
             let env' = M.fromList mapping
                 s'   = s{ evalEnv = M.union env' evalEnv }
             st <- ask
-            (e1', _) <- liftIO $ runEval s' st (eval e1)
-            return e1'
-         Nothing -> return (Id "TODO: pattern fail")
+            (ret, _) <- liftIO $ runEval s' st (eval e1)
+            case ret of
+              Right e1' -> return e1'
+              Left  err -> throwError err
+         Nothing -> throwError $ "Irrefutable pattern: " ++ show x
     where m = match x e2
 eval (App e1 e2)
   = do e1' <- deepEval e1

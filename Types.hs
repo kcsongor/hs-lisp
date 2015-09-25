@@ -254,7 +254,6 @@ inferSub e (Def x expr)
        s'@InferState{..} <- get
        let TEnv e'   = remove e x
            env       = TEnv $ M.union e' (M.singleton x (Scheme [] var))
-           TEnv e''  = env
        (s, t)  <- inferSub env expr
        put s'{  isEnv = insert isEnv x (generalise env t) }
        return (s, t)
