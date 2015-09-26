@@ -48,3 +48,11 @@ Functions with multiple patterns
   [False a b] b
 ))
 ```
+
+Functions are curried (so partial application is possible):
+```
+>> (def f (+ 1))
+'f :: (Int -> Int)
+>> (f 41)
+42 :: Int
+```
