@@ -44,6 +44,10 @@ instance Show Type where
     = "[" ++ show t ++ "]"
   show (TVar a) 
     = a
+  show (TC n [])
+    = n
+  show (TC n [t])
+    = n ++ " " ++ show t
   show (TC n ts)
     = n ++ " (" ++ (unwords . map show $ ts) ++ ")"
 
