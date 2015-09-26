@@ -1,0 +1,8 @@
+(data (Either a b) [Left a] [Right b])
+
+(data (Op a) [Div a a])
+
+(def div (
+  [a 0] (Left "Division by zero")
+  [a b] (Right (Div a b))
+))
