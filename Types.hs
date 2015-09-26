@@ -118,8 +118,7 @@ combine :: Sub -> Sub -> Sub
 combine s1 s2 = M.union s1 (M.map (substitute s1) s2)
 
 combineAll :: [Sub] -> Sub
-combineAll [] = noSub
-combineAll ss = foldr1 combine ss
+combineAll ss = foldr combine noSub ss
 
 remove :: TEnv -> String -> TEnv
 remove (TEnv e) s = TEnv (M.delete s e)
