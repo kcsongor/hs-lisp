@@ -86,7 +86,7 @@ runExpr code = do
     Right t' -> do
       let TEnv typeEnv'  = typeEnv
       let TEnv typeEnv'' = isEnv inferEnv
-      put p{ typeEnv = TEnv $ M.union typeEnv' typeEnv'' }
+      put p{ typeEnv = TEnv $ M.union typeEnv'' typeEnv' }
       e <- deepEval code
       liftIO . putStrLn $ show e ++ " :: " ++ show t'
 
