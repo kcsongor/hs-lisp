@@ -15,3 +15,36 @@ A simple functional language with a lisp-like syntax written in Haskell
 - dependent types
 - syntax subject to change
 - laziness
+
+##### Examples:
+Data type definition:
+```
+(data (Maybe a) [Just a] [Nothing])
+```
+
+Lambdas with pattern matching:
+```
+(def fromJust (\(Just x).x))
+
+(def fmap (\f (Just x). (Just (f x))))
+```
+
+Functions with multiple patterns
+```
+(data (Bool) [True] [False])
+
+(def or (
+  [True x]  True
+  [False x] x
+))
+
+(def and (
+  [True x]  x
+  [False x] False
+))
+
+(def if (
+  [True a b]  a
+  [False a b] b
+))
+```
