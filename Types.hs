@@ -9,9 +9,6 @@ module Types(
   InferState(..),
   runTI,
   runTypeInference,
-  typePerms,
-  tUnion,
-  tExtractUnion,
   emptyScheme,
   generalise,
 ) where
@@ -27,9 +24,7 @@ import Control.Monad.Except
 
 -- TODO: type literals for data type declaration
 data Type = TInt 
-          | TBool
           | TChar
-          | TS (S.Set Type)
           | TC String [Type]
           | TList Type
           | TFun Type Type 
@@ -39,8 +34,6 @@ data Type = TInt
 instance Show Type where
   show TInt  
     = "Int"
-  show TBool 
-    = "Bool"
   show TChar 
     = "Char"
   show (TFun t t') 
@@ -51,8 +44,6 @@ instance Show Type where
     = "[" ++ show t ++ "]"
   show (TVar a) 
     = a
-  show (TS ts)
-    = "(" ++ show ts ++ ")"
   show (TC n ts)
     = n ++ " (" ++ (unwords . map show $ ts) ++ ")"
 
@@ -76,8 +67,6 @@ instance TypeTable Type where
     = S.union (freeVars f1) (freeVars f2)
   freeVars (TList l)
     = freeVars l
-  freeVars (TS s)
-    = freeVars (S.toList s)
   freeVars (TC _ ts)
     = freeVars ts
   freeVars _
@@ -90,8 +79,6 @@ instance TypeTable Type where
     = TList (substitute s l)
   substitute s (TC n ts)
     = TC n (substitute s ts)
-  substitute s (TS ts)
-    = TS $ S.map (substitute s) ts
   substitute _ t
     = t
 
@@ -130,28 +117,6 @@ generalise e t = Scheme vars t
 
 emptyScheme :: Type -> Scheme
 emptyScheme t = Scheme (S.toList (freeVars t)) t
-
---------------------------------------------------------------------------------
--- TODO: set of types as type
-typePerms :: S.Set Type -> Int -> S.Set [Type]
-typePerms s n = S.fromList $ replicateM n sl
-  where sl = S.toList s
-
-tUnion :: Type -> Type -> Type
-tUnion (TS t1) (TS t2)  = TS $ S.union t1 t2
-tUnion (TS t1) t2       = TS $ S.insert t2 t1
-tUnion t1 (TS t2)       = TS $ S.insert t1 t2
-tUnion t1 t2
-  | t1 == t2  = t1
-  | otherwise = TS $ S.fromList [t1, t2]
-
-tExtractUnion :: Type -> Type
-tExtractUnion (TS t1)
-  = case S.elems t1 of
-      [t] -> t
-      _   -> TS t1
-tExtractUnion t = t
---------------------------------------------------------------------------------
 
 data InferState = InferState {
   isVars :: Int,
@@ -217,8 +182,6 @@ inferSub (TEnv e) (Cons v)
                         return (noSub, t)
 inferSub _ (Number _)
   = return (noSub, TInt)
-inferSub _ (Boolean _)
-  = return (noSub, TBool)
 inferSub _ (Chars _)
   = return (noSub, TList TChar)
 inferSub e (Lam l r)

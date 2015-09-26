@@ -12,7 +12,6 @@ import Parser
 import Control.Applicative
 
 data Expr = Number Int
-          | Boolean Bool
           | Chars String
           | Id String 
           | Cons String 
@@ -28,7 +27,6 @@ data Expr = Number Int
 
 instance Show Expr where
   show (Number n)    = show n
-  show (Boolean b)   = show b
   show (Chars cs)    = show cs
   show (List exs)    = show exs
   show (Quot e)      = "'" ++ show e
@@ -110,7 +108,7 @@ form = do
   return s
 
 atom :: Parser Expr
-atom = numLit <|> boolLit <|> cons <|> name <|> stringLit
+atom = numLit <|>  cons <|> name <|> stringLit
 
 numLit :: Parser Expr
 numLit = do
@@ -123,19 +121,6 @@ stringLit = do
   s <- many $ noneOf "\""
   char '"'
   return $ Chars s
-
-boolLit :: Parser Expr
-boolLit = true <|> false
-
-false :: Parser Expr
-false = do
-  string "False"
-  return $ Boolean False
-
-true :: Parser Expr
-true = do
-  string "True"
-  return $ Boolean True
 
 name :: Parser Expr
 name = Id <$> nameS

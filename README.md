@@ -14,3 +14,4 @@ A simple functional language with a lisp-like syntax written in Haskell
 - macro system
 - dependent types
 - syntax subject to change
+- laziness

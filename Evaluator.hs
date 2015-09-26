@@ -53,10 +53,7 @@ coreEnv = TEnv $ M.fromList $ map (second emptyScheme)
   [("+",    TFun TInt (TFun TInt TInt)),
    ("*",    TFun TInt (TFun TInt TInt)),
    ("-",    TFun TInt (TFun TInt TInt)),
-   ("==",   TFun (TVar "a") (TFun (TVar "a") TBool)),
-   ("if",   TFun TBool (TFun (TVar "a") (TFun (TVar "a") (TVar "a")))),
-   ("and",  TFun TBool (TFun TBool TBool)),
-   ("or",   TFun TBool (TFun TBool TBool)),
+   ("==",   TFun (TVar "a") (TFun (TVar "a") (TC "Bool" []))),
    ("eval", TFun (TVar "a") (TVar "a"))]
 
 runCode :: String -> Evaluator ()
@@ -99,8 +96,6 @@ deepEval x = do
   x' <- eval x
   if x == x' then return x else deepEval x'
 
--- | TODO:
--- define most of the functions using the language itself (implement pattern matching)
 eval :: Expr -> Evaluator Expr
 eval (App (App f@(Id "+") a1) a2)
   = do n1 <- eval a1
@@ -123,22 +118,7 @@ eval (App (App f@(Id "-") a1) a2)
 eval (App (App (Id "==") a1) a2)
   = do a1' <- deepEval a1
        a2' <- deepEval a2
-       return $ Boolean (a1' == a2')
-eval (App (App f@(Id "or") a1) a2)
-  = do n1 <- eval a1
-       n2 <- eval a2
-       case (n1, n2) of
-        (Boolean n1', Boolean n2') -> return $ Boolean (n1' || n2')
-        (a1', a2')                 -> return $ App (App f a1') a2'
-eval (App (App f@(Id "and") a1) a2)
-  = do n1 <- eval a1
-       n2 <- eval a2
-       case (n1, n2) of
-        (Boolean n1', Boolean n2') -> return $ Boolean (n1' && n2')
-        (a1', a2')                 -> return $ App (App f a1') a2'
-eval (App (App (App (Id "if") p) t) f)
-  = do Boolean p' <- eval p
-       if p' then eval t else eval f
+       return . Id $ if a1' == a2' then "True" else "False"
 eval (App (Id "eval") (Quot q))
   = eval q 
 eval (App (Id "eval") e)
