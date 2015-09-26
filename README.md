@@ -13,6 +13,7 @@ A simple functional language with a lisp-like syntax written in Haskell
 - parser errors (ExeptT transformer)
 - macro system
 - dependent types
+- type classes
 - syntax subject to change
 - laziness
 
