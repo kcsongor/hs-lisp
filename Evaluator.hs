@@ -25,6 +25,13 @@ import Data.Maybe
 
 import qualified Data.Map.Strict as M
 
+data EvalError = PatternMatchE (Maybe String) 
+               | TypeExistsE String
+               | ConstructorExistsE String
+               | TypeCheckE String 
+               | ParserE String 
+               deriving (Show)
+
 data ImpureState = ImpureState {
   counter :: IORef Int -- Just a dummy for now
 }
@@ -34,11 +41,11 @@ data PureState = PureState {
   typeEnv :: TEnv
 }
 
-runEval :: PureState -> ImpureState  -> Evaluator a -> IO (Either String a, PureState)
+runEval :: PureState -> ImpureState  -> Evaluator a -> IO (Either EvalError a, PureState)
 runEval s r = (`runStateT` s) . (`runReaderT` r) . runExceptT
 
 -- IO needed for REPL
-type Evaluator a = ExceptT String (ReaderT ImpureState (StateT PureState IO)) a 
+type Evaluator a = ExceptT EvalError (ReaderT ImpureState (StateT PureState IO)) a 
 
 --------------------------------------------------------------------------------
 coreEnv :: TEnv
@@ -65,17 +72,17 @@ repl = do
     liftIO $ modifyIORef counter (+1)
     case parseExpr line of
       Just code -> runExpr code
-      Nothing -> throwError "Couldn't parse"
+      Nothing -> throwError $ ParserE "Couldn't parse"
     repl
   -- print the error, then continue
-  `catchError` (\s -> void $ liftIO (putStrLn $ "Error: " ++ s) >> repl)
+  `catchError` (\e -> void $ liftIO (putStrLn $ "Error: " ++ show e) >> repl)
 
 runExpr :: Expr -> Evaluator ()
 runExpr code = do
   p@PureState{..} <- get
   let (tRes, inferEnv) = runTI typeEnv $ inferType code
   case tRes of
-    Left err -> throwError err
+    Left err -> throwError $ TypeCheckE err
     Right t' -> do
       let TEnv typeEnv'  = typeEnv
       let TEnv typeEnv'' = isEnv inferEnv
@@ -84,10 +91,10 @@ runExpr code = do
       liftIO . putStrLn $ show e ++ " :: " ++ show t'
 
 deepEval :: Expr -> Evaluator Expr
-deepEval (Abs x v) = do
+deepEval (Lam x v) = do
   x' <- deepEval x
   v'  <- deepEval v
-  return $ Abs x' v'
+  return $ Lam x' v'
 deepEval x = do
   x' <- eval x
   if x == x' then return x else deepEval x'
@@ -137,21 +144,28 @@ eval (App (Id "eval") (Quot q))
 eval (App (Id "eval") e)
   = do e' <- eval e
        return $ App (Id "eval") e'
-eval (App (Abs x e1) e2)
+eval (App (Lam x e1) e2)
   = do s@PureState{..} <- get
        let env' = M.fromList (fromJust m)
            s'   = s{ evalEnv = M.union env' evalEnv }
-       when (isNothing m) $ throwError $ "Irrefutable pattern: " ++ show x 
+       when (isNothing m) . throwError $ PatternMatchE (Just . show $ x)
        put s'
        e1' <- deepEval e1
        put s
        return e1'
     where m = match x e2
+eval (App (PAbs []) _)
+  = throwError $ PatternMatchE Nothing
+eval (App (PAbs (p : ps)) e)
+  = eval (App p e) `catchError` handler
+  -- If the patterns did not match, try the next pattern
+  where handler (PatternMatchE _) = eval (App (PAbs ps) e)
+        handler err = throwError err
 eval (App e1 e2)
   = do e1' <- deepEval e1
        e2' <- deepEval e2
        return $ App e1' e2'
-eval (Let x v i) = eval (App (Abs x i) v)
+eval (Let x v i) = eval (App (Lam x i) v)
 eval (Def x expr)
   = do s@PureState{..} <- get
        put s{ evalEnv = M.insert x expr evalEnv }
@@ -163,11 +177,11 @@ eval (Data n ts cs)
            e_type = M.lookup n te'
            e_cons = M.intersection te' cs'
        -- see if type already exists $ TODO: types need to be stored
-       when (isJust e_type) $ throwError $
-         "Type " ++ (show . fromJust $ e_type) ++ " is already defined"
+       when (isJust e_type) . throwError $
+         TypeExistsE (show . fromJust $ e_type)
        -- see if constructor already exists
-       when (M.size e_cons > 0) $ throwError $
-         "Constructor " ++ (show . head . fsts $ e_cons) ++ " is already defined"
+       when (M.size e_cons > 0) . throwError $
+         ConstructorExistsE (show . head . fsts $ e_cons)
        put s{ typeEnv = TEnv $ M.union te' cs'}
        return . Quot $ Id n
     where constype = TC n (map TVar ts)

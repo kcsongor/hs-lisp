@@ -99,7 +99,7 @@ word :: Parser String
 word = many letter
 
 whitespace :: Parser Char
-whitespace = sat (\c -> c == ' ' || c == '\n' || c == '\t')
+whitespace = anyOf " \n\t"
 
 sepBy :: Parser a -> Parser b -> Parser [b]
 sepBy pa pb = do

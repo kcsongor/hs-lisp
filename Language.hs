@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
+{-# LANGUAGE GADTs #-}
 module Language(
   Expr(..),
   parseExpr,
@@ -18,8 +19,8 @@ data Expr = Number Int
           | List [Expr]
           | Quot Expr
           | App Expr Expr
-          | Abs Expr Expr
-          | PAbs [Expr] -- TODO: function def with multiple patterns
+          | Lam Expr Expr
+          | PAbs [Expr] -- List of Lams
           | Let Expr Expr Expr
           | Def String Expr
           | Data String [String] [(String, [Expr])]
@@ -32,7 +33,7 @@ instance Show Expr where
   show (List exs)    = show exs
   show (Quot e)      = "'" ++ show e
   show (App e1 e2)   = "(" ++ show e1 ++ " " ++ show e2 ++ ")"
-  show (Abs s e)     = "(\\" ++ show s ++ ". " ++ show e ++ ")"
+  show (Lam s e)     = "(\\" ++ show s ++ ". " ++ show e ++ ")"
   show (Let s e1 e2) = "Let " ++ show s ++ " " ++ show e1 ++ " " ++ show e2
   show (Def s _)     = s
   show (Id s)        = s
@@ -77,7 +78,15 @@ quote = do
 
 -- TODO: def and dataDef should only be allowed at the top level
 expr :: Parser Expr
-expr = atom +++ quote +++ lambda +++ def +++ dataDef +++ letExpr +++ app +++ list
+expr = atom 
+   +++ quote 
+   +++ function 
+   +++ lambda 
+   +++ def 
+   +++ dataDef 
+   +++ letExpr 
+   +++ app 
+   +++ list
 
 app :: Parser Expr
 app = do
@@ -155,7 +164,19 @@ lambda = brackets '(' ')' $ do
   char '.'
   many whitespace
   e    <- expr
-  return $ foldr Abs e is
+  return $ foldr Lam e is
+
+function :: Parser Expr
+function = brackets '(' ')' $ do
+  patterns <- sepBy (some whitespace) pattern
+  return $ PAbs patterns
+
+pattern :: Parser Expr
+pattern = do
+  is <- brackets '[' ']' $ sepBy (some whitespace) expr
+  many whitespace
+  e  <- expr
+  return $ foldr Lam e is
 
 letExpr :: Parser Expr
 letExpr = brackets '(' ')' $ do

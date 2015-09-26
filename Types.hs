@@ -56,8 +56,6 @@ instance Show Type where
   show (TC n ts)
     = n ++ " (" ++ (unwords . map show $ ts) ++ ")"
 
-
-
 data Scheme = Scheme [String] Type deriving (Show)
 
 newtype TEnv = TEnv (M.Map String Scheme)
@@ -118,7 +116,7 @@ combine :: Sub -> Sub -> Sub
 combine s1 s2 = M.union s1 (M.map (substitute s1) s2)
 
 combineAll :: [Sub] -> Sub
-combineAll ss = foldr combine noSub ss
+combineAll = foldr combine noSub
 
 remove :: TEnv -> String -> TEnv
 remove (TEnv e) s = TEnv (M.delete s e)
@@ -223,8 +221,8 @@ inferSub _ (Boolean _)
   = return (noSub, TBool)
 inferSub _ (Chars _)
   = return (noSub, TList TChar)
-inferSub e (Abs l r)
-  = do env <- foldM (\e'@(TEnv tenv) s -> do
+inferSub e (Lam l r)
+  = do env <- foldM (\e'@(TEnv tenv) s ->
                 -- make sure we don't have type constructor with the same name
                 case M.lookup s tenv of
                   Nothing -> do
@@ -256,7 +254,7 @@ inferSub e (App l r)
        s        <- unify (substitute sr tl) (TFun tr var)
        return (combineAll [s, sr, sl], substitute s var)
 inferSub e (Let x expr1 expr2)
-  = inferSub e (App (Abs x expr2) expr1)
+  = inferSub e (App (Lam x expr2) expr1)
 inferSub e (Def x expr)
   = do var     <- nextVar
        s'@InferState{..} <- get
@@ -273,6 +271,9 @@ inferSub e (List (e1 : es))
        (ss, TList ts) <- inferSub (substitute s1 e) (List es)
        s              <- unify t1 ts
        return (ss, TList $ substitute s ts)
+inferSub e (PAbs p)
+  = do (s, TList t) <- inferSub e (List p)
+       return (s, t)
 inferSub e (Quot q) = inferSub e q
 
 inferType :: Expr -> TI Type
