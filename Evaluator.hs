@@ -53,7 +53,7 @@ coreEnv = TEnv $ M.fromList $ map (second emptyScheme)
   [("+",    TFun TInt (TFun TInt TInt)),
    ("*",    TFun TInt (TFun TInt TInt)),
    ("-",    TFun TInt (TFun TInt TInt)),
-   ("==",   TFun (TVar "a") (TFun (TVar "a") (TC "Bool" []))),
+   ("==",   TFun (TVar "a") (TFun (TVar "a") (TCons "Bool" []))),
    ("eval", TFun (TVar "a") (TVar "a"))]
 
 runCode :: String -> Evaluator ()
@@ -164,7 +164,7 @@ eval (Data n ts cs)
          ConstructorExistsE (show . head . fsts $ e_cons)
        put s{ typeEnv = TEnv $ M.union te' cs'}
        return . Quot $ Id n
-    where constype = TC n (map TVar ts)
+    where constype = TCons n (map TVar ts)
           cons     = foldr (\(Id s) -> TFun (TVar s)) constype
           fsts m   = map fst (M.toList m)
 eval (Id x)

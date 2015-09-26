@@ -25,7 +25,7 @@ import Control.Monad.Except
 -- TODO: type literals for data type declaration
 data Type = TInt 
           | TChar
-          | TC String [Type]
+          | TCons String [Type]
           | TList Type
           | TFun Type Type 
           | TVar String 
@@ -44,11 +44,11 @@ instance Show Type where
     = "[" ++ show t ++ "]"
   show (TVar a) 
     = a
-  show (TC n [])
+  show (TCons n [])
     = n
-  show (TC n [t])
+  show (TCons n [t])
     = n ++ " " ++ show t
-  show (TC n ts)
+  show (TCons n ts)
     = n ++ " (" ++ (unwords . map show $ ts) ++ ")"
 
 data Scheme = Scheme [String] Type deriving (Show)
@@ -71,7 +71,7 @@ instance TypeTable Type where
     = S.union (freeVars f1) (freeVars f2)
   freeVars (TList l)
     = freeVars l
-  freeVars (TC _ ts)
+  freeVars (TCons _ ts)
     = freeVars ts
   freeVars _
     = S.empty
@@ -81,8 +81,8 @@ instance TypeTable Type where
     = TFun (substitute s f1) (substitute s f2)
   substitute s (TList l)
     = TList (substitute s l)
-  substitute s (TC n ts)
-    = TC n (substitute s ts)
+  substitute s (TCons n ts)
+    = TCons n (substitute s ts)
   substitute _ t
     = t
 
@@ -164,7 +164,7 @@ unify t (TVar v)
   = bind v t
 unify (TList t1) (TList t2)
   = unify t1 t2
-unify (TC n1 ts1) (TC n2 ts2)
+unify (TCons n1 ts1) (TCons n2 ts2)
   | n1 == n2 
     = do subs <- zipWithM unify ts1 ts2
          return $ combineAll subs
@@ -208,7 +208,7 @@ inferSub e (Data n ts cons)
        mapM_ (inferSub e') (concatMap snd cons)
        ts' <- mapM (inferSub e' . Id) ts
        let ts'' = map snd ts'
-       return (noSub, TC n ts'')
+       return (noSub, TCons n ts'')
   where updateEnv env t
           = do var <- nextVar
                let TEnv e' = remove env t

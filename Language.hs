@@ -56,7 +56,7 @@ parseCode :: String -> [Expr]
 parseCode c = case runParser parser c of
   [] -> []
   ss -> fst . head $ ss
-  where parser = sepBy (many whitespace) expr
+  where parser = many whitespace >> sepBy (many whitespace) expr
 
 parseExpr :: String -> Maybe Expr
 parseExpr s = case runParser expr s of
