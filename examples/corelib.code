@@ -1,0 +1,27 @@
+(data (Maybe a) [Just a] [Nothing])
+
+(def fromJust (\(Just x).x))
+
+(def fmap (\f (Just x). (Just (f x))))
+
+(data (Bool) [True] [False])
+
+(def or (
+  [True x]  True
+  [False x] x
+))
+
+(def and (
+  [True x]  x
+  [False x] False
+))
+
+(def not (
+  [True]  False
+  [x]     True
+))
+
+(def if (
+  [True a b]  a
+  [False a b] b
+))
