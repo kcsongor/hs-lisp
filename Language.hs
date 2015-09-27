@@ -11,6 +11,7 @@ module Language(
 import Parser
 import Control.Applicative
 
+type Pattern = Expr
 data Expr = Number Int
           | Chars String
           | Id String 
@@ -20,6 +21,7 @@ data Expr = Number Int
           | App Expr Expr
           | Lam Expr Expr
           | PAbs [Expr] -- List of Lams
+          | PApp [(Expr, Expr)]
           | Let Expr Expr Expr
           | Def String Expr
           | Data String [String] [(String, [Expr])]
@@ -37,9 +39,9 @@ instance Show Expr where
   show (Id s)        = s
   show (Cons s)      = s
   show (Data n _ _)  = n
-  show (PAbs cs)     = show cs
+  show (PAbs cs)     = "patterns: " ++ show cs
+  show (PApp cs)     = "(" ++ show cs ++ ") "
 
-type Pattern = Expr
 match :: Pattern -> Expr -> Maybe [(String, Expr)]
 match (App (Cons cons1) (Id r1)) (App (Cons cons2) r2)
   | cons1 == cons2 = Just [(r1, r2)]

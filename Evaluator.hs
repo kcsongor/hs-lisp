@@ -125,10 +125,10 @@ eval (App (Id "eval") e)
   = do e' <- eval e
        return $ App (Id "eval") e'
 eval (App (Lam x e1) e2)
-  = do s@PureState{..} <- get
+  = do when (isNothing m) . throwError $ PatternMatchE (Just . show $ x)
+       s@PureState{..} <- get
        let env' = M.fromList (fromJust m)
            s'   = s{ evalEnv = M.union env' evalEnv }
-       when (isNothing m) . throwError $ PatternMatchE (Just . show $ x)
        put s'
        e1' <- deepEval e1
        put s
@@ -136,15 +136,24 @@ eval (App (Lam x e1) e2)
     where m = match x e2
 eval (App (PAbs []) _)
   = throwError $ PatternMatchE Nothing
-eval (App (PAbs (p : ps)) e)
-  = eval (App p e) `catchError` handler
-  -- If the patterns did not match, try the next pattern
-  where handler (PatternMatchE _) = eval (App (PAbs ps) e)
-        handler err = throwError err
+eval (App (PAbs ps) e)
+  = return $ App (PApp (map (\x -> (x, x)) ps)) e
 eval (App e1 e2)
   = do e1' <- deepEval e1
        e2' <- deepEval e2
-       return $ App e1' e2'
+       case e1' of
+         (PApp ps) -> do 
+             let (PApp p) = PApp (mapMaybe (f e2') ps)
+             finished <- final p
+             case finished of
+               (Just expr) -> return expr
+               (Nothing)   -> return $ PApp p
+         _           -> return $ App e1' e2'
+  where f expr (Lam w t, e') = match w expr >> Just (t, App e' expr)
+        f _ l = Just l
+        final [] = throwError $ PatternMatchE Nothing
+        final ((Lam _ _, _) : _) = return Nothing
+        final (p : _)       = return (Just (snd p))
 eval (Let x v i) = eval (App (Lam x i) v)
 eval (Def x expr)
   = do s@PureState{..} <- get
