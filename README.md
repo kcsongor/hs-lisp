@@ -1,5 +1,5 @@
 # hs-lisp
-A simple functional language with a lisp-like syntax written in Haskell
+A simple functional toy language with a lisp-like syntax written in Haskell
 (heavily inspired by Haskell)
 
 ##### What works:
