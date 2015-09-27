@@ -1,5 +1,5 @@
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
-{-# LANGUAGE GADTs #-}
+
 module Language(
   Expr(..),
   parseExpr,
@@ -154,8 +154,7 @@ lambda = brackets '(' ')' $ do
   many whitespace
   char '.'
   many whitespace
-  e    <- expr
-  return $ foldr Lam e is
+  lamRight is
 
 function :: Parser Expr
 function = brackets '(' ')' $ do
@@ -166,7 +165,11 @@ pattern :: Parser Expr
 pattern = do
   is <- brackets '[' ']' $ sepBy (some whitespace) expr
   many whitespace
-  e  <- expr
+  lamRight is
+
+lamRight :: [Expr] -> Parser Expr
+lamRight is = do
+  e <- expr
   return $ foldr Lam e is
 
 letExpr :: Parser Expr

@@ -6,9 +6,10 @@ module Evaluator(
   ImpureState(..),
   runEval,
   PureState(..),
-  repl,
-  runCode,
+  EvalError(..),
   coreEnv,
+  eval,
+  deepEval
 ) where
 
 import Language
@@ -55,37 +56,6 @@ coreEnv = TEnv $ M.fromList $ map (second emptyScheme)
    ("-",    TFun TInt (TFun TInt TInt)),
    ("==",   TFun (TVar "a") (TFun (TVar "a") (TCons "Bool" []))),
    ("eval", TFun (TVar "a") (TVar "a"))]
-
-runCode :: String -> Evaluator ()
-runCode code = forM_ exprs runExpr
-  where exprs = parseCode code
-
-repl :: Evaluator ()
-repl = do
-  liftIO $ putStr ">> "
-  line <- liftIO getLine
-  when (line /= ":q") $ do 
-    ImpureState{..} <- ask
-    liftIO $ modifyIORef counter (+1)
-    case parseExpr line of
-      Just code -> runExpr code
-      Nothing -> throwError $ ParserE "Couldn't parse"
-    repl
-  -- print the error, then continue
-  `catchError` (\e -> void $ liftIO (putStrLn $ "Error: " ++ show e) >> repl)
-
-runExpr :: Expr -> Evaluator ()
-runExpr code = do
-  p@PureState{..} <- get
-  let (tRes, inferEnv) = runTI typeEnv $ inferType code
-  case tRes of
-    Left err -> throwError $ TypeCheckE err
-    Right t' -> do
-      let TEnv typeEnv'  = typeEnv
-      let TEnv typeEnv'' = isEnv inferEnv
-      put p{ typeEnv = TEnv $ M.union typeEnv'' typeEnv' }
-      e <- deepEval code
-      liftIO . putStrLn $ show e ++ " :: " ++ show t'
 
 deepEval :: Expr -> Evaluator Expr
 deepEval (Lam x v) = do
