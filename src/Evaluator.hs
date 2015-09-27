@@ -59,8 +59,11 @@ coreEnv = TEnv $ M.fromList $ map (second emptyScheme)
 
 deepEval :: Expr -> Evaluator Expr
 deepEval (Lam x v) = do
+  --PureState{..} <- get
+  --liftIO $ print evalEnv
+  liftIO $ print $ Lam x v
   x' <- deepEval x
-  v'  <- deepEval v
+  v' <- deepEval v
   return $ Lam x' v'
 deepEval x = do
   x' <- eval x
@@ -95,7 +98,9 @@ eval (App (Id "eval") e)
   = do e' <- eval e
        return $ App (Id "eval") e'
 eval (App (Lam x e1) e2)
-  = do when (isNothing m) . throwError $ PatternMatchE (Just . show $ x)
+  = do e2' <- deepEval e2
+       let m = match x e2'
+       when (isNothing m) . throwError $ PatternMatchE (Just $ show x ++ " -- " ++ show e2')
        s@PureState{..} <- get
        let env' = M.fromList (fromJust m)
            s'   = s{ evalEnv = M.union env' evalEnv }
@@ -103,7 +108,6 @@ eval (App (Lam x e1) e2)
        e1' <- deepEval e1
        put s
        return e1'
-    where m = match x e2
 eval (App (PAbs []) _)
   = throwError $ PatternMatchE Nothing
 eval (App (PAbs ps) e)
@@ -149,8 +153,12 @@ eval (Data n ts cs)
 eval (Id x)
   = do PureState{..} <- get
        case M.lookup x evalEnv of
-         Just x' -> deepEval x'
-         Nothing -> return $ Id x
+         Just x' -> do
+          liftIO . putStrLn $ "Looked up " ++ show x ++ " found " ++ show x'
+          deepEval x'
+         Nothing -> do 
+          liftIO . putStrLn $ "Looked up " ++ show x ++ " found nothing"
+          return $ Id x
 eval (List l)
   = do vs <- mapM eval l
        return $ List vs

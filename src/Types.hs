@@ -186,8 +186,8 @@ inferSub (TEnv e) (Cons v)
                         return (noSub, t)
 inferSub _ (Number _)
   = return (noSub, TInt)
-inferSub _ (Chars _)
-  = return (noSub, TList TChar)
+inferSub _ (Char _)
+  = return (noSub, TChar)
 inferSub e (Lam l r)
   = do env <- foldM (\e'@(TEnv tenv) s ->
                 -- make sure we don't have type constructor with the same name

@@ -13,7 +13,7 @@ import Control.Applicative
 
 type Pattern = Expr
 data Expr = Number Int
-          | Chars String
+          | Char Char
           | Id String 
           | Cons String 
           | List [Expr]
@@ -32,19 +32,21 @@ data Expr = Number Int
           deriving (Eq)
 
 instance Show Expr where
-  show (Number n)    = show n
-  show (Chars cs)    = show cs
-  show (List exs)    = show exs
-  show (Quot e)      = "'" ++ show e
-  show (App e1 e2)   = "(" ++ show e1 ++ " " ++ show e2 ++ ")"
-  show (Lam s e)     = "(\\" ++ show s ++ ". " ++ show e ++ ")"
-  show (Let s e1 e2) = "Let " ++ show s ++ " " ++ show e1 ++ " " ++ show e2
-  show (Def s _)     = s
-  show (Id s)        = s
-  show (Cons s)      = s
-  show (Data n _ _)  = n
-  show (PAbs cs)     = "patterns: " ++ show cs
-  show (PApp cs)     = "(" ++ show cs ++ ") "
+  show (Number n)     = show n
+  show (Char c)       = show c
+  show (List exs)     = case exs of
+                          (Char _ : _) -> show $ map (\(Char c) -> c) exs
+                          l -> show l
+  show (Quot e)       = "'" ++ show e
+  show (App e1 e2)    = "(" ++ show e1 ++ " " ++ show e2 ++ ")"
+  show (Lam s e)      = "(\\" ++ show s ++ ". " ++ show e ++ ")"
+  show (Let s e1 e2)  = "Let " ++ show s ++ " " ++ show e1 ++ " " ++ show e2
+  show (Def s _)      = s
+  show (Id s)         = s
+  show (Cons s)       = s
+  show (Data n _ _)   = n
+  show (PAbs cs)      = "patterns: " ++ show cs
+  show (PApp cs)      = "(" ++ show cs ++ ") "
 
 match :: Pattern -> Expr -> Maybe [(String, Expr)]
 match (App (Cons cons1) (Id r1)) (App (Cons cons2) r2)
@@ -114,7 +116,7 @@ form = do
   return s
 
 atom :: Parser Expr
-atom = numLit <|>  cons <|> name <|> stringLit
+atom = numLit <|>  cons <|> name <|> stringLit <|> charLit
 
 numLit :: Parser Expr
 numLit = do
@@ -126,7 +128,14 @@ stringLit = do
   char '"'
   s <- many $ noneOf "\""
   char '"'
-  return $ Chars s
+  return . List $ map Char s
+
+charLit :: Parser Expr
+charLit = do
+  char '\''
+  c <- item
+  char '\''
+  return . Char $ c
 
 name :: Parser Expr
 name = Id <$> nameS
