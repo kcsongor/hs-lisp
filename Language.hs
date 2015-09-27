@@ -20,7 +20,11 @@ data Expr = Number Int
           | Quot Expr
           | App Expr Expr
           | Lam Expr Expr
-          | PAbs [Expr] -- List of Lams
+          -- List of Lams
+          | PAbs [Expr]
+          -- intermediate representation for pattern matching
+          -- the first Expr is the leftover expression
+          -- the second is the full expression with the applied arguments
           | PApp [(Expr, Expr)]
           | Let Expr Expr Expr
           | Def String Expr

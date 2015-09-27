@@ -4,5 +4,4 @@
 
 (def div (
   [a 0] (Left "Division by zero")
-  [a b] (Right (Div a b))
-))
+  [a b] (Right (Div a b))))

@@ -14,11 +14,11 @@ module Evaluator(
 import Language
 import Types
 
+import Control.Arrow
 import Control.Monad
+import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
-import Control.Monad.Except
-import Control.Arrow
 
 import Data.IORef
 import Data.Maybe
@@ -148,7 +148,7 @@ eval (App e1 e2)
              case finished of
                (Just expr) -> return expr
                (Nothing)   -> return $ PApp p
-         _           -> return $ App e1' e2'
+         _         -> return $ App e1' e2'
   where f expr (Lam w t, e') = match w expr >> Just (t, App e' expr)
         f _ l = Just l
         final [] = throwError $ PatternMatchE Nothing
