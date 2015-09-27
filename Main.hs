@@ -6,8 +6,8 @@ import System.Environment
 welcome :: IO ()
 welcome = putStrLn "REPL 0.1"
 
-loadCode :: IO (Maybe String)
-loadCode = do
+loadUserCode :: IO (Maybe String)
+loadUserCode = do
   args <- getArgs
   case args of
    (a : _) -> Just <$> readFile a
@@ -16,6 +16,6 @@ loadCode = do
 main :: IO ()
 main = do 
   corelib  <- readFile "corelib.code"
-  usercode <- loadCode
+  usercode <- loadUserCode
   welcome
   runREPL corelib usercode
