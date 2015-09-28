@@ -18,8 +18,9 @@ import Types
 import Control.Arrow
 import Control.Monad
 import Control.Monad.Except
-import Control.Monad.Reader
-import Control.Monad.State
+--import Control.Monad.Reader
+--import Control.Monad.State
+import Control.Monad.Trans.RWS.Strict
 
 import Data.IORef
 import Data.Maybe
@@ -42,11 +43,10 @@ data PureState = PureState {
   typeEnv :: TEnv
 }
 
-runEval :: PureState -> ImpureState  -> Evaluator a -> IO (Either EvalError a, PureState)
-runEval s r = (`runStateT` s) . (`runReaderT` r) . runExceptT
+runEval :: PureState -> ImpureState  -> Evaluator a -> Either EvalError (a, PureState, String)
+runEval s r = runExcept . (\evaluator -> runRWST evaluator r s)
 
--- IO needed for REPL
-type Evaluator a = ExceptT EvalError (ReaderT ImpureState (StateT PureState IO)) a 
+type Evaluator a = RWST ImpureState String PureState (Except EvalError) a
 
 --------------------------------------------------------------------------------
 coreEnv :: TEnv
