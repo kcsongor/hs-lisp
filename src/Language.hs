@@ -24,9 +24,7 @@ data Expr = Number Int
           -- List of Lams
           | PAbs [Expr]
           -- intermediate representation for pattern matching
-          -- the first Expr is the leftover expression
-          -- the second is the full expression with the applied arguments
-          | PApp [(Expr, [Match])] -- fst: the leftover, snd: full expression with the applied arguments
+          | PApp [(Expr, [Match])] -- fst: the leftover, snd: mappings of args to their values
           | Let Expr Expr Expr
           | Def String Expr
           | Data String [String] [(String, [Expr])]
