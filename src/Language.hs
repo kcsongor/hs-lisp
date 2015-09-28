@@ -45,9 +45,13 @@ instance Show Expr where
   show (Cons s)       = s
   show (Data n _ _)   = n
   show (PAbs cs)      = "patterns: " ++ show cs
-  show (PApp _)       = "no representation" --"(" ++ show cs ++ ") "
+  show (PApp cs)      = "(" ++ show cs ++ ") "
 
 match :: Pattern -> Expr -> Maybe [(String, Expr)]
+match (App (App (Id ":") (Id h)) (Id t)) (List l) =
+  case l of 
+    [] -> Nothing
+    (x : xs) -> Just [(h, x), (t, List xs)]
 match (App (Cons cons1) (Id r1)) (App (Cons cons2) r2)
   | cons1 == cons2 = Just [(r1, r2)]
   | otherwise      = Nothing
@@ -110,7 +114,7 @@ list = do
 form :: Parser [Expr]
 form = do
   many whitespace
-  s <- sepBy (some whitespace) expr
+  s <- sepByOpt (some whitespace) expr
   many whitespace
   return s
 
@@ -119,8 +123,8 @@ atom = numLit <|>  cons <|> name <|> stringLit <|> charLit
 
 numLit :: Parser Expr
 numLit = do
-  n <- some digit
-  return . Number . read $ n
+  n <- number
+  return . Number $ n
 
 stringLit :: Parser Expr
 stringLit = do

@@ -14,6 +14,7 @@ module Parser(
   letter,
   word,
   sepBy,
+  sepByOpt,
   whitespace,
   string,
   anyOf,
@@ -78,10 +79,13 @@ digit :: Parser Char
 digit = anyOf ['0'..'9']
 
 number :: (Read a, Num a) => Parser a
-number = do n <- many digit
+number = do neg <- Just <$> char '-' <|> return Nothing
+            n <- many digit
             case n of 
               [] -> failure
-              _  -> return $ read n
+              _  -> case neg of 
+                Just _  -> return $ (-1) * read n
+                Nothing -> return $ read n
 
 upper :: Parser Char
 upper = anyOf ['A'..'Z']
@@ -93,7 +97,7 @@ letter :: Parser Char
 letter = lower +++ upper
 
 special :: Parser Char
-special = anyOf "~!@#$%^*-=_+?<>,/?;"
+special = anyOf "~!@#$%^*-=_+?<>,/?;:"
 
 word :: Parser String
 word = many letter
@@ -109,3 +113,6 @@ sepBy pa pb = do
   where pb' = do
           _ <- pa
           pb
+
+sepByOpt :: Parser a -> Parser b -> Parser [b]
+sepByOpt pa pb = sepBy pa pb <|> return []

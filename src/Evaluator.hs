@@ -56,6 +56,7 @@ coreEnv = TEnv $ M.fromList $ map (second emptyScheme)
    ("-",    TFun TInt (TFun TInt TInt)),
    ("==",   TFun (TVar "a") (TFun (TVar "a") (TCons "Bool" []))),
    ("++",   TFun (TList (TVar "a")) (TFun (TList (TVar "a")) (TList (TVar "a")))),
+   (":",   TFun (TVar "a") (TFun (TList (TVar "a")) (TList (TVar "a")))),
    ("eval", TFun (TVar "a") (TVar "a"))]
 
 deepEval :: Expr -> Evaluator Expr
@@ -76,6 +77,12 @@ eval (App (App f@(Id "++") a1) a2)
        case (l1, l2) of
         (List l1', List l2') -> return $ List (l1' ++ l2')
         (a1', a2')           -> return $ App (App f a1') a2'
+eval (App (App f@(Id ":") a1) a2)
+  = do l1 <- eval a1
+       l2 <- eval a2
+       case (l1, l2) of
+        (l1', List l2') -> return $ List (l1' : l2')
+        (a1', a2')      -> return $ App (App f a1') a2'
 eval (App (App f@(Id "*") a1) a2)
   = do n1 <- eval a1
        n2 <- eval a2
