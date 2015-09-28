@@ -1,0 +1,2 @@
+(def myself (, "Csongor" 19))
+(def greet (\(, name age) . (++ "Hello " name)))
