@@ -58,13 +58,6 @@ coreEnv = TEnv $ M.fromList $ map (second emptyScheme)
    ("eval", TFun (TVar "a") (TVar "a"))]
 
 deepEval :: Expr -> Evaluator Expr
-deepEval (Lam x v) = do
-  --PureState{..} <- get
-  --liftIO $ print evalEnv
-  liftIO $ print $ Lam x v
-  x' <- deepEval x
-  v' <- deepEval v
-  return $ Lam x' v'
 deepEval x = do
   x' <- eval x
   if x == x' then return x else deepEval x'
@@ -97,21 +90,13 @@ eval (App (Id "eval") (Quot q))
 eval (App (Id "eval") e)
   = do e' <- eval e
        return $ App (Id "eval") e'
+-- Lambdas are functions with a single pattern
 eval (App (Lam x e1) e2)
-  = do e2' <- deepEval e2
-       let m = match x e2'
-       when (isNothing m) . throwError $ PatternMatchE (Just $ show x ++ " -- " ++ show e2')
-       s@PureState{..} <- get
-       let env' = M.fromList (fromJust m)
-           s'   = s{ evalEnv = M.union env' evalEnv }
-       put s'
-       e1' <- deepEval e1
-       put s
-       return e1'
+  = return $ App (PAbs [Lam x e1]) e2
 eval (App (PAbs []) _)
   = throwError $ PatternMatchE Nothing
 eval (App (PAbs ps) e)
-  = return $ App (PApp (map (\x -> (x, x)) ps)) e
+  = return $ App (PApp (map (\x -> (x, [])) ps)) e
 eval (App e1 e2)
   = do e1' <- deepEval e1
        e2' <- deepEval e2
@@ -120,14 +105,21 @@ eval (App e1 e2)
              let (PApp p) = PApp (mapMaybe (f e2') ps)
              finished <- final p
              case finished of
-               (Just expr) -> return expr
+               (Just (expr, mappings)) -> do
+                 s@PureState{..} <- get
+                 let env' = M.fromList mappings
+                     s'   = s{ evalEnv = M.union env' evalEnv }
+                 put s'
+                 expr' <- eval expr
+                 put s
+                 return expr'
                (Nothing)   -> return $ PApp p
          _         -> return $ App e1' e2'
-  where f expr (Lam w t, e') = match w expr >> Just (t, App e' expr)
+  where f expr (Lam w t, e') = match w expr >>= \m' -> Just (t, m' ++ e')
         f _ l = Just l
         final [] = throwError $ PatternMatchE Nothing
         final ((Lam _ _, _) : _) = return Nothing
-        final (p : _)       = return (Just (snd p))
+        final (p : _)       = return (Just p)
 eval (Let x v i) = eval (App (Lam x i) v)
 eval (Def x expr)
   = do s@PureState{..} <- get
@@ -153,12 +145,8 @@ eval (Data n ts cs)
 eval (Id x)
   = do PureState{..} <- get
        case M.lookup x evalEnv of
-         Just x' -> do
-          liftIO . putStrLn $ "Looked up " ++ show x ++ " found " ++ show x'
-          deepEval x'
-         Nothing -> do 
-          liftIO . putStrLn $ "Looked up " ++ show x ++ " found nothing"
-          return $ Id x
+         Just x' -> deepEval x'
+         Nothing -> return $ Id x
 eval (List l)
   = do vs <- mapM eval l
        return $ List vs

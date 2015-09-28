@@ -12,6 +12,7 @@ import Parser
 import Control.Applicative
 
 type Pattern = Expr
+type Match = (String, Expr)
 data Expr = Number Int
           | Char Char
           | Id String 
@@ -25,7 +26,7 @@ data Expr = Number Int
           -- intermediate representation for pattern matching
           -- the first Expr is the leftover expression
           -- the second is the full expression with the applied arguments
-          | PApp [(Expr, Expr)]
+          | PApp [(Expr, [Match])] -- fst: the leftover, snd: full expression with the applied arguments
           | Let Expr Expr Expr
           | Def String Expr
           | Data String [String] [(String, [Expr])]
@@ -46,7 +47,7 @@ instance Show Expr where
   show (Cons s)       = s
   show (Data n _ _)   = n
   show (PAbs cs)      = "patterns: " ++ show cs
-  show (PApp cs)      = "(" ++ show cs ++ ") "
+  show (PApp _)       = "no representation" --"(" ++ show cs ++ ") "
 
 match :: Pattern -> Expr -> Maybe [(String, Expr)]
 match (App (Cons cons1) (Id r1)) (App (Cons cons2) r2)
