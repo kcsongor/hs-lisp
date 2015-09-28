@@ -91,7 +91,7 @@ eval (App (App f@(Id "-") a1) a2)
 eval (App (App (Id "==") a1) a2)
   = do a1' <- deepEval a1
        a2' <- deepEval a2
-       return . Id $ if a1' == a2' then "True" else "False"
+       return . Cons $ if a1' == a2' then "True" else "False"
 eval (App (Id "eval") (Quot q))
   = eval q 
 eval (App (Id "eval") e)
