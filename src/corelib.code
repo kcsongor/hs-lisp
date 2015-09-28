@@ -25,3 +25,15 @@
   [True a b]  a
   [False a b] b
 ))
+
+(data (Tuple2 a b) [Tuple2 a b])
+(data (Tuple3 a b c) [Tuple3 a b c])
+
+(def , Tuple2)
+(def ,, Tuple3)
+
+(def fst (\(, f s) . f))
+(def snd (\(, f s) . s))
+
+
+
