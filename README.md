@@ -57,3 +57,14 @@ Functions are curried (so partial application is possible):
 >> (f 41)
 42 :: Int
 ```
+
+Using tuples:
+```
+(def myself (, "Csongor" 19))
+(def greet (\(, name age) . (++ "Hello " name)))
+```
+
+```
+>> (greet myself)
+"Hello Csongor" :: String
+```
