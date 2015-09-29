@@ -54,6 +54,8 @@ coreEnv = TEnv $ M.fromList $ map (second emptyScheme)
   [("+",    TFun TInt (TFun TInt TInt)),
    ("*",    TFun TInt (TFun TInt TInt)),
    ("-",    TFun TInt (TFun TInt TInt)),
+   ("<",    TFun TInt (TFun TInt (TCons "Bool" []))),
+   (">",    TFun TInt (TFun TInt (TCons "Bool" []))),
    ("==",   TFun (TVar "a") (TFun (TVar "a") (TCons "Bool" []))),
    ("++",   TFun (TList (TVar "a")) (TFun (TList (TVar "a")) (TList (TVar "a")))),
    (":",    TFun (TVar "a") (TFun (TList (TVar "a")) (TList (TVar "a")))),
@@ -70,6 +72,18 @@ eval (App (App f@(Id "+") a1) a2)
        n2 <- eval a2
        case (n1, n2) of
         (Number n1', Number n2') -> return $ Number (n1' + n2')
+        (a1', a2')               -> return $ App (App f a1') a2'
+eval (App (App f@(Id ">") a1) a2)
+  = do n1 <- eval a1
+       n2 <- eval a2
+       case (n1, n2) of
+        (Number n1', Number n2') -> return $ boolToExpr (n1' > n2')
+        (a1', a2')               -> return $ App (App f a1') a2'
+eval (App (App f@(Id "<") a1) a2)
+  = do n1 <- eval a1
+       n2 <- eval a2
+       case (n1, n2) of
+        (Number n1', Number n2') -> return $ boolToExpr (n1' < n2')
         (a1', a2')               -> return $ App (App f a1') a2'
 eval (App (App f@(Id "++") a1) a2)
   = do l1 <- eval a1
@@ -98,7 +112,7 @@ eval (App (App f@(Id "-") a1) a2)
 eval (App (App (Id "==") a1) a2)
   = do a1' <- deepEval a1
        a2' <- deepEval a2
-       return . Cons $ if a1' == a2' then "True" else "False"
+       return $ boolToExpr (a1' == a2')
 eval (App (Id "eval") (Quot q))
   = eval q 
 eval (App (Id "eval") e)
@@ -134,7 +148,7 @@ eval (App e1 e2)
         final [] = throwError $ PatternMatchE Nothing
         final ((Lam _ _, _) : _) = return Nothing
         final (p : _)       = return (Just p)
-eval (Let x v i) = eval (App (Lam x i) v)
+eval (Let x v i) = deepEval (App (Lam x i) v)
 eval (Def x expr)
   = do s@PureState{..} <- get
        put s{ evalEnv = M.insert x expr evalEnv }

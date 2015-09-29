@@ -6,6 +6,7 @@ module Language(
   parseCode,
   parseNum,
   match,
+  boolToExpr,
 ) where
 
 import Parser
@@ -46,6 +47,10 @@ instance Show Expr where
   show (Data n _ _)   = n
   show (PAbs cs)      = "patterns: " ++ show cs
   show (PApp cs)      = "(" ++ show cs ++ ") "
+
+boolToExpr :: Bool -> Expr
+boolToExpr False = Cons "False"
+boolToExpr True  = Cons "True"
 
 match :: Pattern -> Expr -> Maybe [(String, Expr)]
 match (App (App (Id ":") (Id h)) m') (List l) =

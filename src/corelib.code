@@ -79,3 +79,4 @@
   [f (: a as)] (foldl f a as)
 ))
 
+(def _ foldl1)

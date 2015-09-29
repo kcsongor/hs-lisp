@@ -2,7 +2,6 @@ import Interpreter
 
 import Control.Applicative
 import System.Environment
-import System.IO
 
 welcome :: IO ()
 welcome = putStrLn "REPL 0.1"
@@ -16,7 +15,6 @@ loadUserCode = do
 
 main :: IO ()
 main = do 
-  hSetBuffering stdout NoBuffering
   corelib  <- readFile "corelib.code"
   usercode <- loadUserCode
   welcome

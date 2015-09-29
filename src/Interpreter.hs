@@ -12,6 +12,7 @@ import Control.Applicative
 import Control.Monad.Except
 import Control.Monad.Trans.RWS.Strict
 import Data.IORef
+import System.IO
 import qualified Data.Map as M
 import qualified Data.Foldable as F (mapM_)
 
@@ -34,6 +35,7 @@ runREPL corelib usercode = do
 repl :: ImpureState -> PureState -> IO ()
 repl i p = do
   putStr ">> "
+  hFlush stdout
   line <- getLine
   when (line /= ":q") $
     case runEval p i (runCode line) of

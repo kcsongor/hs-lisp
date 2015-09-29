@@ -61,10 +61,17 @@ Functions are curried (so partial application is possible):
 Using tuples:
 ```
 (def myself (, "Csongor" 19))
-(def greet (\(, name age) . (++ "Hello " name)))
-```
 
+(def greet (
+  [(, name age)] 
+    (let offer (if (> 18 age) "coke" "whiskey")
+      (_ ++ ["Hi " name ", would you like a " offer "?"]))))
+```
+(The function _ is a synonym for foldl1)
+
+Then in the REPL:
 ```
 >> (greet myself)
-"Hello Csongor" :: String
+"Hi Csongor, would you like a whiskey?" :: String
 ```
+(No thanks, I don't like whiskey)

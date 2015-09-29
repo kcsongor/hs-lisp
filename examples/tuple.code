@@ -1,2 +1,6 @@
 (def myself (, "Csongor" 19))
-(def greet (\(, name age) . (++ "Hello " name)))
+
+(def greet (
+  [(, name age)] 
+    (let offer (if (> 18 age) "coke" "whiskey")
+      (_ ++ ["Hi " name ", would you like a " offer "?"]))))
