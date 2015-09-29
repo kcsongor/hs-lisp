@@ -10,7 +10,6 @@ module Language(
 
 import Parser
 import Control.Applicative
-import Control.Arrow (first)
 
 type Pattern = Expr
 type Match = (String, Expr)
@@ -56,9 +55,14 @@ match (App (App (Id ":") (Id h)) m') (List l) =
 match (App (App (Id "++") (List l1)) rest) (List l2) =
   case l2 of 
     [] -> Nothing
-    _  -> matchList l1 l2 >>= \(lms, r) -> match rest r >>= \ms -> Just (lms ++ ms)
-  where matchList (l1' : l1s') (l2' : l2s')
-          = match l1' l2' >>= \ms -> fmap (first (ms ++)) (matchList l1s' l2s')
+    _  -> do 
+      (lms, r) <- matchList l1 l2
+      ms <- match rest r
+      return (lms ++ ms)
+  where matchList (l1' : l1s') (l2' : l2s') = do
+          ms <- match l1' l2'
+          (lms, r) <- matchList l1s' l2s'
+          return (ms ++ lms, r)
         matchList [] rest'
           = Just ([], List rest')
         matchList _ _

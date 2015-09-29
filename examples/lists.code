@@ -18,3 +18,16 @@
   [[x]] True
   [x] False
 ))
+
+(def head2 (
+  [(++ [x y] rest)] [x y]
+))
+
+(def head2_2 (
+  [(: x (: y rest))] [x y]
+))
+
+(def zip (
+  [(: a as) (: b bs)] (: (, a b) (zip as bs))
+  [as bs] []
+))
