@@ -97,7 +97,7 @@ letter :: Parser Char
 letter = lower +++ upper
 
 special :: Parser Char
-special = anyOf "~!@#$%^*-=_+?<>,/?;:"
+special = anyOf "&~!@#$%^*-=_+?<>,/?;:"
 
 word :: Parser String
 word = many letter

@@ -10,6 +10,7 @@ module Language(
 
 import Parser
 import Control.Applicative
+import Control.Arrow (first)
 
 type Pattern = Expr
 type Match = (String, Expr)
@@ -52,14 +53,24 @@ match (App (App (Id ":") (Id h)) m') (List l) =
   case l of 
     [] -> Nothing
     (x : xs) -> match m' (List xs) >>= \ps -> Just ((h, x) : ps)
+match (App (App (Id "++") (List l1)) rest) (List l2) =
+  case l2 of 
+    [] -> Nothing
+    _  -> matchList l1 l2 >>= \(lms, r) -> match rest r >>= \ms -> Just (lms ++ ms)
+  where matchList (l1' : l1s') (l2' : l2s')
+          = match l1' l2' >>= \ms -> fmap (first (ms ++)) (matchList l1s' l2s')
+        matchList [] rest'
+          = Just ([], List rest')
+        matchList _ _
+          = Nothing
 match (List (l1 : l1s)) (List (l2 : l2s))
   = match l1 l2 >>= \ms -> fmap (ms ++) (match (List l1s) (List l2s))
 match (List []) (List []) = Just []
-match (App (Cons cons1) (Id r1)) (App (Cons cons2) r2)
-  | cons1 == cons2 = Just [(r1, r2)]
+match (App (Cons cons1) r1) (App (Cons cons2) r2)
+  | cons1 == cons2 = match r1 r2
   | otherwise      = Nothing
-match (App l1 (Id r1)) (App l2 r2)
-  = fmap ((r1, r2) :) (match l1 l2)
+match (App l1 r1) (App l2 r2)
+  = match r1 r2 >>= \m -> match l1 l2 >>= \m' -> Just $ m ++ m'
 match (Id p) x
   = Just [(p, x)]
 match a b
