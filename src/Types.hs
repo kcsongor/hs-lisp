@@ -19,6 +19,7 @@ import qualified Data.Map.Strict as M
 import qualified Data.Set        as S
 
 import Data.Maybe
+import Data.Char
 import Control.Monad.State
 import Control.Monad.Except
 
@@ -136,7 +137,10 @@ runTI env = (`runState` initState) . runExceptT
 nextVar :: TI Type
 nextVar = do st@InferState{..} <- get
              put st{ isVars = isVars + 1}
-             return (TVar ('t' : show isVars))
+             let num = if (isVars <= m) then "" else show (isVars - m)
+             return (TVar ((([pa..'z'] ++ (repeat 't')) !! isVars) : num))
+          where m = (ord 'z' - ord 'a') 
+                pa = chr (ord 'a' - 1)
 
 refreshVars :: Scheme -> TI Type
 refreshVars (Scheme vars t)
@@ -245,9 +249,9 @@ inferSub e (Quot q) = inferSub e q
 
 inferType :: Expr -> TI Type
 inferType expr
-  = do InferState{..} <- get
+  = do s@InferState{..} <- get
        (sub, t) <- inferSub isEnv expr
-       return $ substitute sub t
+       refreshVars $ generalise emptyEnv $ substitute sub t
 
 runTypeInference :: TEnv -> Expr -> Either String Type
 runTypeInference env expr
