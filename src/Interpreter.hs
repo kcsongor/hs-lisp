@@ -26,7 +26,7 @@ runREPL corelib usercode = do
   i@ ImpureState{..} <- ImpureState <$> newIORef 0
   case runEval p i (action corelib usercode) of
     Left err         -> printError err
-    Right (_, p', _) -> repl i p'
+    Right (_, p', w) -> putStr w >> repl i p'
   where action c u = do
           runCode c
           F.mapM_ runCode u
@@ -41,7 +41,7 @@ repl i p = do
         printError err
         repl i p
       Right (_, p', w) -> do
-        putStrLn w
+        putStr w
         repl i p'
 
 -- Parses code then runs the expressions found
@@ -64,4 +64,4 @@ runExpr code = do
       let TEnv typeEnv'' = isEnv inferEnv
       put p{ typeEnv = TEnv $ M.union typeEnv'' typeEnv' }
       e <- deepEval code
-      tell $ show e ++ " :: " ++ show t'
+      tell $ show e ++ " :: " ++ show t' ++ "\n"
