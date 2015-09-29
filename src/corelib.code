@@ -55,3 +55,26 @@
   [(: a as) (: b bs)] (: (, a b) (zip as bs))
   [as bs] []
 ))
+
+(def length (
+  [[]] 0
+  [(: l ls)] (+ 1 (length ls))
+))
+
+(def foldr (
+  [f b []] b
+  [f b (: a as)] (f a (foldr f b as))
+))
+
+(def foldr1 (
+  [f (: a as)] (foldr f a as)
+))
+
+(def foldl (
+  [f b []] b
+  [f b (: a as)] (foldl f (f b a) as))
+))
+
+(def foldl1 (
+  [f (: a as)] (foldl f a as)
+))
