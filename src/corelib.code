@@ -73,8 +73,9 @@
 (def foldl (
   [f b []] b
   [f b (: a as)] (foldl f (f b a) as))
-))
+)
 
 (def foldl1 (
   [f (: a as)] (foldl f a as)
 ))
+
