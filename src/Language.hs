@@ -48,10 +48,13 @@ instance Show Expr where
   show (PApp cs)      = "(" ++ show cs ++ ") "
 
 match :: Pattern -> Expr -> Maybe [(String, Expr)]
-match (App (App (Id ":") (Id h)) (Id t)) (List l) =
+match (App (App (Id ":") (Id h)) m') (List l) =
   case l of 
     [] -> Nothing
-    (x : xs) -> Just [(h, x), (t, List xs)]
+    (x : xs) -> match m' (List xs) >>= \ps -> Just ((h, x) : ps)
+match (List (l1 : l1s)) (List (l2 : l2s))
+  = match l1 l2 >>= \ms -> fmap (ms ++) (match (List l1s) (List l2s))
+match (List []) (List []) = Just []
 match (App (Cons cons1) (Id r1)) (App (Cons cons2) r2)
   | cons1 == cons2 = Just [(r1, r2)]
   | otherwise      = Nothing

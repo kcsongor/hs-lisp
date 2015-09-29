@@ -56,7 +56,7 @@ coreEnv = TEnv $ M.fromList $ map (second emptyScheme)
    ("-",    TFun TInt (TFun TInt TInt)),
    ("==",   TFun (TVar "a") (TFun (TVar "a") (TCons "Bool" []))),
    ("++",   TFun (TList (TVar "a")) (TFun (TList (TVar "a")) (TList (TVar "a")))),
-   (":",   TFun (TVar "a") (TFun (TList (TVar "a")) (TList (TVar "a")))),
+   (":",    TFun (TVar "a") (TFun (TList (TVar "a")) (TList (TVar "a")))),
    ("eval", TFun (TVar "a") (TVar "a"))]
 
 deepEval :: Expr -> Evaluator Expr

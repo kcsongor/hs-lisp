@@ -1,0 +1,20 @@
+(def head (
+  [(: x xs)] x))
+
+(def tail (
+  [(: x xs)] xs))
+
+(def reverse (
+  [[]]       []
+  [(: x xs)] [(++ xs [x])]
+))
+
+(def map (
+  [f []]       []
+  [f (: x xs)] (: (f x) (map f xs))
+))
+
+(def singleton (
+  [[x]] True
+  [x] False
+))
