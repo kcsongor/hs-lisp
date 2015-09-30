@@ -1,5 +1,6 @@
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 module Evaluator(
   Evaluator,
@@ -11,6 +12,7 @@ module Evaluator(
   eval,
   deepEval
 ) where
+
 
 import Language
 import Types
@@ -36,6 +38,7 @@ data ImpureState = ImpureState {
   counter :: IORef Int -- Just a dummy for now
 }
 
+
 data PureState = PureState {
   evalEnv :: M.Map String Expr,
   typeEnv :: TEnv
@@ -46,6 +49,7 @@ runEval s r = runExcept . (\evaluator -> runRWST evaluator r s)
 
 type Evaluator a = RWST ImpureState String PureState (Except EvalError) a
 
+{-# ANN module "HLint: ignore Eta reduce" #-}
 --------------------------------------------------------------------------------
 coreEnv :: TEnv
 coreEnv = TEnv $ M.fromList $ map (second emptyScheme)
@@ -64,50 +68,52 @@ deepEval x = do
   x' <- eval x
   if x == x' then return x else deepEval x'
 
+pattern BinOp f a1 a2 = App (App f a1) a2
+
 eval :: Expr -> Evaluator Expr
-eval (App (App f@(Id "+") a1) a2)
+eval (BinOp f@(Id "+") a1 a2)
   = do n1 <- eval a1
        n2 <- eval a2
        case (n1, n2) of
         (Number n1', Number n2') -> return $ Number (n1' + n2')
-        (a1', a2')               -> return $ App (App f a1') a2'
-eval (App (App f@(Id ">") a1) a2)
+        (a1', a2')               -> return (BinOp f a1' a2')
+eval (BinOp f@(Id ">") a1 a2)
   = do n1 <- eval a1
        n2 <- eval a2
        case (n1, n2) of
         (Number n1', Number n2') -> return $ boolToExpr (n1' > n2')
-        (a1', a2')               -> return $ App (App f a1') a2'
-eval (App (App f@(Id "<") a1) a2)
+        (a1', a2')               -> return (BinOp f a1' a2')
+eval (BinOp f@(Id "<") a1 a2)
   = do n1 <- eval a1
        n2 <- eval a2
        case (n1, n2) of
         (Number n1', Number n2') -> return $ boolToExpr (n1' < n2')
-        (a1', a2')               -> return $ App (App f a1') a2'
-eval (App (App f@(Id "++") a1) a2)
+        (a1', a2')               -> return (BinOp f a1' a2')
+eval (BinOp f@(Id "++") a1 a2)
   = do l1 <- eval a1
        l2 <- eval a2
        case (l1, l2) of
         (List l1', List l2') -> return $ List (l1' ++ l2')
-        (a1', a2')           -> return $ App (App f a1') a2'
-eval (App (App f@(Id ":") a1) a2)
+        (a1', a2')           -> return (BinOp f a1' a2')
+eval (BinOp f@(Id ":") a1 a2)
   = do l1 <- eval a1
        l2 <- eval a2
        case (l1, l2) of
         (l1', List l2') -> return $ List (l1' : l2')
-        (a1', a2')      -> return $ App (App f a1') a2'
-eval (App (App f@(Id "*") a1) a2)
+        (a1', a2')      -> return (BinOp f a1' a2')
+eval (BinOp f@(Id "*") a1 a2)
   = do n1 <- eval a1
        n2 <- eval a2
        case (n1, n2) of
         (Number n1', Number n2') -> return $ Number (n1' * n2')
-        (a1', a2')               -> return $ App (App f a1') a2'
-eval (App (App f@(Id "-") a1) a2)
+        (a1', a2')               -> return (BinOp f a1' a2')
+eval (BinOp f@(Id "-") a1 a2)
   = do n1 <- eval a1
        n2 <- eval a2
        case (n1, n2) of
         (Number n1', Number n2') -> return $ Number (n1' - n2')
-        (a1', a2')               -> return $ App (App f a1') a2'
-eval (App (App (Id "==") a1) a2)
+        (a1', a2')               -> return (BinOp f a1' a2')
+eval (BinOp (Id "==") a1 a2)
   = do a1' <- deepEval a1
        a2' <- deepEval a2
        return $ boolToExpr (a1' == a2')
