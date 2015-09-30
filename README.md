@@ -64,14 +64,16 @@ Using tuples:
 
 (def greet (
   [(, name age)] 
-    (let offer (if (> 18 age) "coke" "whiskey")
-      (_ ++ ["Hi " name ", would you like a " offer "?"]))))
+    (let 
+      ((child (> 18 age))
+       (offer (if (not child) "whiskey" "coke")))
+         (_ ++ ["Hi " name ", would you like some " offer "?"]))))
 ```
 (The function _ is a synonym for foldl1)
 
 Then in the REPL:
 ```
 >> (greet myself)
-"Hi Csongor, would you like a whiskey?" :: String
+"Hi Csongor, would you like some whiskey?" :: String
 ```
 (No thanks, I don't like whiskey)
