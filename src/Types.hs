@@ -19,7 +19,6 @@ import qualified Data.Map.Strict as M
 import qualified Data.Set        as S
 
 import Data.Maybe
-import Data.Char
 import Control.Monad.State
 import Control.Monad.Except
 
@@ -137,7 +136,7 @@ runTI env = (`runState` initState) . runExceptT
 nextVar :: TI Type
 nextVar = do st@InferState{..} <- get
              put st{ isVars = isVars + 1}
-             return $ TVar ('t' : (show isVars))
+             return $ TVar ('t' : show isVars)
 
 refreshVars :: Scheme -> TI Type
 refreshVars (Scheme vars t)
@@ -148,10 +147,11 @@ refreshVars (Scheme vars t)
 -- replace type variables with nice readable letters
 finalVars :: Scheme -> Type
 finalVars (Scheme vars t) = do
-  do let s = M.fromList $ zip vars (map TVar (alpha ++ ts))
+     let s = M.fromList $ zip vars (map TVar (alpha ++ ts))
      substitute s t
   where alpha = map (:[]) ['a'..'z']
-        ts    = zipWith (:) (repeat 't') (map show [1..])
+        ts    = map ((:) 't' . show) ints
+        ints  = [1..] :: [Integer]
 
 bind :: String -> Type -> TI Sub
 bind s t
@@ -251,12 +251,13 @@ inferSub e (PAbs p)
   = do (s, TList t) <- inferSub e (List p)
        return (s, t)
 inferSub e (Quot q) = inferSub e q
+inferSub _ (PApp _) = undefined
 
 inferType :: Expr -> TI Type
 inferType expr
-  = do s@InferState{..} <- get
+  = do InferState{..} <- get
        i <- inferSub isEnv expr
-       return . finalVars . generalise emptyEnv . (uncurry substitute) $ i
+       return . finalVars . generalise emptyEnv . uncurry substitute $ i
 
 runTypeInference :: TEnv -> Expr -> Either String Type
 runTypeInference env expr

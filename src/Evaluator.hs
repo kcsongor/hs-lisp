@@ -18,8 +18,6 @@ import Types
 import Control.Arrow
 import Control.Monad
 import Control.Monad.Except
---import Control.Monad.Reader
---import Control.Monad.State
 import Control.Monad.Trans.RWS.Strict
 
 import Data.IORef
