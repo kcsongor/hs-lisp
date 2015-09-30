@@ -137,16 +137,21 @@ runTI env = (`runState` initState) . runExceptT
 nextVar :: TI Type
 nextVar = do st@InferState{..} <- get
              put st{ isVars = isVars + 1}
-             let num = if (isVars <= m) then "" else show (isVars - m)
-             return (TVar ((([pa..'z'] ++ (repeat 't')) !! isVars) : num))
-          where m = (ord 'z' - ord 'a') 
-                pa = chr (ord 'a' - 1)
+             return $ TVar ('t' : (show isVars))
 
 refreshVars :: Scheme -> TI Type
 refreshVars (Scheme vars t)
   = do newvars <- forM vars (const nextVar)
        let s = M.fromList $ zip vars newvars
        return $ substitute s t
+
+-- replace type variables with nice readable letters
+finalVars :: Scheme -> Type
+finalVars (Scheme vars t) = do
+  do let s = M.fromList $ zip vars (map TVar (alpha ++ ts))
+     substitute s t
+  where alpha = map (:[]) ['a'..'z']
+        ts    = zipWith (:) (repeat 't') (map show [1..])
 
 bind :: String -> Type -> TI Sub
 bind s t
@@ -250,8 +255,8 @@ inferSub e (Quot q) = inferSub e q
 inferType :: Expr -> TI Type
 inferType expr
   = do s@InferState{..} <- get
-       (sub, t) <- inferSub isEnv expr
-       refreshVars $ generalise emptyEnv $ substitute sub t
+       i <- inferSub isEnv expr
+       return . finalVars . generalise emptyEnv . (uncurry substitute) $ i
 
 runTypeInference :: TEnv -> Expr -> Either String Type
 runTypeInference env expr
