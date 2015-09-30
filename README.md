@@ -19,19 +19,19 @@ A simple functional toy language with a lisp-like syntax written in Haskell
 
 ##### Examples:
 Data type definition:
-```
+```lisp
 (data (Maybe a) [Just a] [Nothing])
 ```
 
 Lambdas with pattern matching:
-```
+```lisp
 (def fromJust (\(Just x).x))
 
 (def fmap (\f (Just x). (Just (f x))))
 ```
 
 Functions with multiple patterns
-```
+```lisp
 (data (Bool) [True] [False])
 
 (def or (
@@ -59,7 +59,7 @@ Functions are curried (so partial application is possible):
 ```
 
 Using tuples:
-```
+```lisp
 (def myself (, "Csongor" 19))
 
 (def greet (
@@ -72,7 +72,7 @@ Using tuples:
 (The function _ is a synonym for foldl1)
 
 Then in the REPL:
-```
+```lisp
 >> (greet myself)
 "Hi Csongor, would you like some whiskey?" :: String
 ```
