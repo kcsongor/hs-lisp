@@ -211,12 +211,17 @@ letExpr :: Parser Expr
 letExpr = brackets '(' ')' $ do
   string "let"
   some whitespace
-  i <- expr
+  as <- brackets '(' ')' (sepBy (many whitespace) assignment) 
+        <|> fmap (:[]) assignment
   some whitespace
-  e    <- expr 
-  some whitespace
-  e'   <- expr
-  return $ Let i e e'
+  i  <- expr
+  return $ foldr (uncurry Let) i as
+  where assignment
+          = brackets '(' ')' $ do
+              e <- expr
+              some whitespace
+              v <- expr
+              return (e, v)
 
 def :: Parser Expr
 def = brackets '(' ')' $ do

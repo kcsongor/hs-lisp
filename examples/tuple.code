@@ -2,5 +2,7 @@
 
 (def greet (
   [(, name age)] 
-    (let offer (if (> 18 age) "coke" "whiskey")
-      (_ ++ ["Hi " name ", would you like a " offer "?"]))))
+    (let 
+      ((child (> 18 age))
+       (offer (if (not child) "whiskey" "coke")))
+         (_ ++ ["Hi " name ", would you like some " offer "?"]))))
