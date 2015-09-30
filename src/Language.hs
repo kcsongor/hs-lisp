@@ -3,6 +3,7 @@
 
 module Language(
   Expr(..),
+  pattern BinOp,
   parseExpr,
   parseCode,
   parseNum,

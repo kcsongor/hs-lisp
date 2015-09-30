@@ -49,7 +49,6 @@ runEval s r = runExcept . (\evaluator -> runRWST evaluator r s)
 
 type Evaluator a = RWST ImpureState String PureState (Except EvalError) a
 
-{-# ANN module "HLint: ignore Eta reduce" #-}
 --------------------------------------------------------------------------------
 coreEnv :: TEnv
 coreEnv = TEnv $ M.fromList $ map (second emptyScheme)
@@ -67,8 +66,6 @@ deepEval :: Expr -> Evaluator Expr
 deepEval x = do
   x' <- eval x
   if x == x' then return x else deepEval x'
-
-pattern BinOp f a1 a2 = App (App f a1) a2
 
 eval :: Expr -> Evaluator Expr
 eval (BinOp f@(Id "+") a1 a2)
