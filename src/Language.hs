@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 module Language(
   Expr(..),
@@ -48,16 +49,20 @@ instance Show Expr where
   show (PAbs cs)      = "patterns: " ++ show cs
   show (PApp cs)      = "(" ++ show cs ++ ") "
 
+{-# ANN module "HLint: ignore Eta reduce" #-}
+
 boolToExpr :: Bool -> Expr
 boolToExpr False = Cons "False"
 boolToExpr True  = Cons "True"
 
+pattern BinOp f a1 a2 = App (App f a1) a2
+
 match :: Pattern -> Expr -> Maybe [(String, Expr)]
-match (App (App (Id ":") (Id h)) m') (List l) =
+match (BinOp (Id ":") (Id h) m') (List l) =
   case l of 
     [] -> Nothing
     (x : xs) -> match m' (List xs) >>= \ps -> Just ((h, x) : ps)
-match (App (App (Id "++") (List l1)) rest) (List l2) =
+match (BinOp (Id "++") (List l1) rest) (List l2) =
   case l2 of 
     [] -> Nothing
     _  -> do 
@@ -193,11 +198,11 @@ lambda = brackets '(' ')' $ do
 
 function :: Parser Expr
 function = brackets '(' ')' $ do
-  patterns <- sepBy (some whitespace) pattern
+  patterns <- sepBy (some whitespace) pat
   return $ PAbs patterns
 
-pattern :: Parser Expr
-pattern = do
+pat :: Parser Expr
+pat = do
   is <- brackets '[' ']' $ sepBy (some whitespace) expr
   many whitespace
   lamRight is
