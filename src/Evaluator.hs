@@ -13,7 +13,6 @@ module Evaluator(
   deepEval
 ) where
 
-
 import Language
 import Types
 
@@ -57,6 +56,8 @@ coreEnv = TEnv $ M.fromList $ map (second emptyScheme)
    ("-",    TFun TInt (TFun TInt TInt)),
    ("<",    TFun TInt (TFun TInt (TCons "Bool" []))),
    (">",    TFun TInt (TFun TInt (TCons "Bool" []))),
+   ("<=",   TFun TInt (TFun TInt (TCons "Bool" []))),
+   (">=",   TFun TInt (TFun TInt (TCons "Bool" []))),
    ("==",   TFun (TVar "a") (TFun (TVar "a") (TCons "Bool" []))),
    ("++",   TFun (TList (TVar "a")) (TFun (TList (TVar "a")) (TList (TVar "a")))),
    (":",    TFun (TVar "a") (TFun (TList (TVar "a")) (TList (TVar "a")))),
@@ -67,25 +68,29 @@ deepEval x = do
   x' <- eval x
   if x == x' then return x else deepEval x'
 
+evalBinInt :: Expr -> (Int -> Int -> Expr) -> Expr -> Expr -> Evaluator Expr
+evalBinInt f' fun n1 n2 =
+  do n1' <- eval n1
+     n2' <- eval n2
+     case (n1', n2') of
+       (Number n1'', Number n2'') -> return (fun n1'' n2'')
+       (a1', a2') -> return $ BinOp f' a1' a2'
+
 eval :: Expr -> Evaluator Expr
 eval (BinOp f@(Id "+") a1 a2)
-  = do n1 <- eval a1
-       n2 <- eval a2
-       case (n1, n2) of
-        (Number n1', Number n2') -> return $ Number (n1' + n2')
-        (a1', a2')               -> return (BinOp f a1' a2')
+  = evalBinInt f ((.) Number . (+)) a1 a2
+eval (BinOp f@(Id "-") a1 a2)
+  = evalBinInt f ((.) Number . (-)) a1 a2
+eval (BinOp f@(Id "*") a1 a2)
+  = evalBinInt f ((.) Number . (*)) a1 a2
 eval (BinOp f@(Id ">") a1 a2)
-  = do n1 <- eval a1
-       n2 <- eval a2
-       case (n1, n2) of
-        (Number n1', Number n2') -> return $ boolToExpr (n1' > n2')
-        (a1', a2')               -> return (BinOp f a1' a2')
+  = evalBinInt f ((.) boolToExpr . (>)) a1 a2
 eval (BinOp f@(Id "<") a1 a2)
-  = do n1 <- eval a1
-       n2 <- eval a2
-       case (n1, n2) of
-        (Number n1', Number n2') -> return $ boolToExpr (n1' < n2')
-        (a1', a2')               -> return (BinOp f a1' a2')
+  = evalBinInt f ((.) boolToExpr . (<)) a1 a2
+eval (BinOp f@(Id ">=") a1 a2)
+  = evalBinInt f ((.) boolToExpr . (>=)) a1 a2
+eval (BinOp f@(Id "<=") a1 a2)
+  = evalBinInt f ((.) boolToExpr . (<=)) a1 a2
 eval (BinOp f@(Id "++") a1 a2)
   = do l1 <- eval a1
        l2 <- eval a2
@@ -98,18 +103,6 @@ eval (BinOp f@(Id ":") a1 a2)
        case (l1, l2) of
         (l1', List l2') -> return $ List (l1' : l2')
         (a1', a2')      -> return (BinOp f a1' a2')
-eval (BinOp f@(Id "*") a1 a2)
-  = do n1 <- eval a1
-       n2 <- eval a2
-       case (n1, n2) of
-        (Number n1', Number n2') -> return $ Number (n1' * n2')
-        (a1', a2')               -> return (BinOp f a1' a2')
-eval (BinOp f@(Id "-") a1 a2)
-  = do n1 <- eval a1
-       n2 <- eval a2
-       case (n1, n2) of
-        (Number n1', Number n2') -> return $ Number (n1' - n2')
-        (a1', a2')               -> return (BinOp f a1' a2')
 eval (BinOp (Id "==") a1 a2)
   = do a1' <- deepEval a1
        a2' <- deepEval a2
